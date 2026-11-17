@@ -5,7 +5,7 @@ on:
     branches: [main]
   workflow_dispatch:
   workflow_run:
-    workflows: [Validate Kaghaz v2]
+    workflows: [Validate Kaghaz]
     branches: [v2]
     types: [completed]
 

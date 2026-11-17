@@ -1,4 +1,4 @@
-name: Validate Kaghaz v2
+name: Validate Kaghaz
 on:
   push:
     branches: [v2]

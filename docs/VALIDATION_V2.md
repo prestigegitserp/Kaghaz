@@ -18,3 +18,5 @@ Do not interpret the Blender render as a screenshot of the realtime renderer. Th
 - GLB packaging was rerun against all nine packed models and SHA-256 remained unchanged, verifying idempotent packing.
 
 The live WebGL limitations stated above remain. Form visibility is not an end-to-end certification of every uploaded decoder combination.
+
+The follow-up published review confirmed that realtime-only controls are disabled on WebGL failure, dismissed editorial copy is absent from accessibility navigation, the product hint reads “نمای رندرشده”, and guided navigation changes station/selected catalog. The tour was adjusted to cover printing, creative paper, board and packaging rather than repeating two families. Root and `/v1/` were opened and retained the original v1 title and catalog.

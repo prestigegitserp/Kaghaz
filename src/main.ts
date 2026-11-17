@@ -368,7 +368,7 @@ function showComparison() {
     openModal(`${modalHead('انتخاب آگاهانه', 'مقایسهٔ مشخصات')}<p class="modal-description">ابعاد، گرماژ و واحد هر کالا جداست. رنگ نمایشگر معیار تطبیق نمونهٔ فیزیکی نیست.</p>${selected.length?`<div class="comparison-scroll"><table class="comparison-table"><thead><tr><th>مشخصه</th>${selected.map(p=>`<th><span class="comparison-color" style="background:${p.color}"></span>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(([title,value])=>`<tr><th>${title}</th>${selected.map(p=>`<td>${esc(value(p))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="modal-footer">${selected.map(p=>`<button class="secondary-button" data-modal-add="${p.id}">${icon('plus',15)} ${esc(p.name)}</button>`).join('')}</div>`:'<p class="modal-description">با دکمهٔ «مقایسهٔ مشخصات» کنار کالاها، تا سه نمونه را انتخاب کنید.</p>'}`, 'comparison-modal');
 }
 function showTourStop() {
-    const stops=[BOOTHS[0],BOOTHS[2],BOOTHS[4],BOOTHS[6]], b=stops[tourIndex];
+    const stops=[BOOTHS[0],BOOTHS[1],BOOTHS[2],BOOTHS[3]], b=stops[tourIndex];
     if(!b)return;selectBooth(b.id);el('tour-panel').hidden=false;
     el('tour-panel').innerHTML=`<div><span class="eyebrow">ایستگاه ${number(tourIndex+1)} از ۴</span><strong>${esc(b.name)}</strong></div><button data-tour-move="-1" ${tourIndex===0?'disabled':''} aria-label="غرفهٔ قبلی">${icon('chevron',17)}</button><button data-tour-move="1" ${tourIndex===3?'disabled':''} aria-label="غرفهٔ بعدی">${icon('arrow',17)}</button>${btn('end-tour','پایان بازدید','close')}`;
 }
