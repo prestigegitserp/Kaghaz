@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.sites-runtime/
+*.zip
+*.log
+.DS_Store
+public/decoders/
+public/assets/Vazirmatn-OFL.txt
