@@ -1,3 +1,9 @@
+# Version 2 assets
+
+`public/v2/models` contains geometry authored in Blender 4.3.2 using the committed `tools/assets/build_assets.py`. `public/v2/materials` is authored with the committed deterministic Pillow/NumPy generator. Color, roughness and tangent normal maps are separate. These are designed materials, not captured or calibrated scans. The three `public/v2/renders/*.webp` images are actual CPU Cycles renders of the source scene; no image-generation tool was used for these v2 images.
+
+The earlier four-image atlas documented below is retained for repository history but no longer loaded by the v2 material library. The application and package licensing below continue to apply. Generated Persian label art uses DejaVu Sans in the authoring environment; label pixels are embedded in authored assets.
+
 # Asset provenance and package licenses
 
 ## Original implementation

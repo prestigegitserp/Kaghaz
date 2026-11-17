@@ -1,9 +1,13 @@
-name: Deploy Kaghaz to GitHub Pages
+name: Deploy Kaghaz versions to GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  workflow_run:
+    workflows: [Validate Kaghaz v2]
+    branches: [v2]
+    types: [completed]
 
 permissions:
   contents: read
@@ -13,33 +17,88 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  frozen-v1:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The original release stays byte-for-byte pinned; root and /v1 use this source.
+          ref: 25dc79f755cdd5f71b324f3f1705c67097421453
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_PUBLIC_BASE: './'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frozen-v1
+          path: dist
+          retention-days: 7
+
+  current-v2:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'v2' }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_PUBLIC_BASE: /Kaghaz/v2/
+      - name: Record deployed source
+        run: git rev-parse HEAD > dist/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: current-v2
+          path: dist
+          retention-days: 7
+
+  assemble:
+    needs: [frozen-v1, current-v2]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pages: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: '24'
-          cache: npm
-      - name: Read GitHub Pages configuration
-        id: pages
-        uses: actions/configure-pages@v6.0.0
-      - run: npm ci
-      - run: npm test
-      - name: Build for the repository subpath
-        run: npm run build
-        env:
-          VITE_PUBLIC_BASE: ${{ steps.pages.outputs.base_path }}/
-      - name: Upload the static site
-        uses: actions/upload-pages-artifact@v5.0.0
+          name: frozen-v1
+          path: releases/v1
+      - uses: actions/download-artifact@v4
+        with:
+          name: current-v2
+          path: releases/v2
+      - name: Assemble three routes in one Pages artifact
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp -a releases/v1/. dist/
+          mkdir -p dist/v1 dist/v2
+          cp -a releases/v1/. dist/v1/
+          cp -a releases/v2/. dist/v2/
+          touch dist/.nojekyll
+          test -f dist/index.html
+          test -f dist/v1/index.html
+          test -f dist/v2/index.html
+          test -f dist/v2/v2/models/paper-ream.glb
+      - uses: actions/configure-pages@v6.0.0
+      - uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: dist
 
   deploy:
-    needs: build
+    needs: assemble
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -48,6 +107,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish to github.io
+      - name: Publish both versions to github.io
         id: deployment
         uses: actions/deploy-pages@v5.0.1

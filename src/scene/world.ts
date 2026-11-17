@@ -10,6 +10,9 @@ import { createArchitecture } from './architecture.ts';
 import { createBooth, disposeCell, type BoothCell, type Target, type Collider } from './booths.ts';
 import { boothPose, type Booth, type Product, type Quality } from '../domain/model.ts';
 import { loadGLB, disposeImported } from './importer.ts';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { AuthoredAssets, batchPlacements } from './authored.ts';
+import { LIGHTING } from './asset-registry.ts';
 export interface WorldCallbacks {
     select: (boothId: string, productId?: string) => void;
     hover: (text: string, x: number, y: number) => void;
@@ -37,6 +40,12 @@ export class BazaarWorld {
     readonly scene = new T.Scene();
     readonly camera = new T.PerspectiveCamera(59, 1, .08, 85);
     readonly materials: MaterialLibrary;
+    readonly assets = new AuthoredAssets();
+    private pendingAssets = new WeakSet<BoothCell>();
+    private readyAssets = new WeakSet<BoothCell>();
+    private failedAssets = new WeakSet<BoothCell>();
+    private environment: T.WebGLRenderTarget;
+    private fill: T.DirectionalLight;
     private controls: OrbitControls;
     private cells: BoothCell[] = [];
     private targets: Target[] = [];
@@ -94,6 +103,11 @@ export class BazaarWorld {
         host.prepend(this.renderer.domElement);
         this.scene.background = new T.Color('#d5c5a6');
         this.scene.fog = new T.Fog('#d9cdb6', 29, 76);
+        const environmentScene = new RoomEnvironment(), pmrem = new T.PMREMGenerator(this.renderer);
+        this.environment = pmrem.fromScene(environmentScene, .04);
+        this.scene.environment = this.environment.texture;
+        this.scene.environmentIntensity = .28;
+        environmentScene.dispose(); pmrem.dispose();
         this.materials = new MaterialLibrary(() => this.invalidate());
         this.scene.add(new T.HemisphereLight('#e8eff0', '#9a7b53', 2.05));
         this.shadow = new T.DirectionalLight('#fff0ce', 3.5);
@@ -105,7 +119,7 @@ export class BazaarWorld {
         this.shadow.shadow.bias = -.0002;
         this.shadow.shadow.normalBias = .035;
         this.scene.add(this.shadow, this.shadow.target);
-        const fill = new T.DirectionalLight('#dce7e5', 1.1);
+        const fill = this.fill = new T.DirectionalLight('#dce7e5', 1.1);
         fill.position.set(6, 5, -18);
         this.scene.add(fill);
         const warm = new T.AmbientLight('#f0d3a1', .2);
@@ -319,6 +333,32 @@ export class BazaarWorld {
         this.renderer.shadowMap.needsUpdate = true;
         this.invalidate();
     }
+    setLighting(id: string): void {
+        const profile = LIGHTING.find(p => p.id === id) || LIGHTING[0];
+        this.shadow.color.set(profile.key); this.shadow.intensity = profile.intensity;
+        this.fill.color.set(profile.fill); this.renderer.toneMappingExposure = profile.exposure;
+        this.renderer.shadowMap.needsUpdate = true; this.invalidate();
+    }
+    private async loadCell(cell: BoothCell): Promise<void> {
+        if (this.pendingAssets.has(cell) || this.readyAssets.has(cell) || this.failedAssets.has(cell)) return;
+        this.pendingAssets.add(cell);
+        try {
+            const pieces = await Promise.all(cell.slots.map(async slot => {
+                const piece = await this.assets.instance(slot.asset, slot.asset === 'merchant-counter' ? cell.booth.accent : undefined);
+                piece.position.set(...slot.position); piece.rotation.y = slot.rotation || 0; piece.scale.setScalar(slot.scale || 1);
+                return piece;
+            }));
+            if (!this.cells.includes(cell)) {
+                pieces.forEach(p => p.traverse(o => { if (o instanceof T.Mesh && o.userData.ownedMaterial) (o.material as T.Material).dispose(); }));
+                return;
+            }
+            cell.authored.add(batchPlacements(pieces)); this.readyAssets.add(cell);
+            this.renderer.shadowMap.needsUpdate = true; this.invalidate();
+        } catch (error) {
+            this.failedAssets.add(cell); console.warn('Authored assets unavailable; retaining geometric fallback', error);
+            this.callback.error('بارگیری جزئیات کامل نشد؛ نمایش سبک و کاتالوگ در دسترس است.');
+        } finally { this.pendingAssets.delete(cell); }
+    }
     setMode(mode: 'walk' | 'orbit') {
         this.mode = mode;
         this.trip = undefined;
@@ -439,6 +479,11 @@ export class BazaarWorld {
         for (const cell of this.cells) {
             const distance = cell.root.position.distanceTo(this.camera.position);
             cell.inventory.visible = distance < (this.effective === 'low' ? 29 : 48);
+            const close = distance < (this.effective === 'low' ? 15 : 21);
+            if (close) void this.loadCell(cell);
+            const show = close && this.readyAssets.has(cell);
+            if (cell.authored.visible !== show) this.renderer.shadowMap.needsUpdate = true;
+            cell.authored.visible = show; cell.fallback.visible = !show;
         }
         if (this.composer)
             this.composer.render();
@@ -499,6 +544,6 @@ export class BazaarWorld {
         this.invalidate();
     } }
     capture() { this.screenshotPending = true; this.invalidate(); }
-    dispose() { cancelAnimationFrame(this.frame); this.abort.abort(); this.resizeObserver.disconnect(); this.controls.dispose(); this.cells.forEach(disposeCell); this.imported.forEach(disposeImported); this.materials.dispose(); this.composer?.dispose(); this.ao?.dispose(); this.renderer.dispose(); this.renderer.domElement.remove(); }
+    dispose() { cancelAnimationFrame(this.frame); this.abort.abort(); this.resizeObserver.disconnect(); this.controls.dispose(); this.cells.forEach(disposeCell); this.cells=[]; this.imported.forEach(disposeImported); this.assets.dispose(); this.environment.dispose(); this.materials.dispose(); this.composer?.dispose(); this.ao?.dispose(); this.renderer.dispose(); this.renderer.domElement.remove(); }
 }
 function canvasCursor(canvas: HTMLCanvasElement, cursor: string) { canvas.style.cursor = cursor; }

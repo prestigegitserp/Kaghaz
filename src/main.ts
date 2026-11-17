@@ -9,9 +9,16 @@ import { deleteAsset, download, getAsset, loadState, putAsset, saveState } from 
 import { icon } from './icons.ts';
 import { productArt } from './art.ts';
 import type { BazaarWorld } from './scene/world.ts';
+import type { StudioControl } from './scene/studio.ts';
+import { LIGHTING } from './scene/asset-registry.ts';
+import { toggleComparison } from './domain/comparison.ts';
+import { REVIEW_VIEWS } from './domain/review.ts';
 let state = loadState();
 let category: Category = 'all', query = '', selectedBooth: string | undefined, favoriteFilter = false, currentView = 'market';
 let world: BazaarWorld | undefined, studioCleanup: (() => void) | undefined, mode: 'walk' | 'orbit' = 'walk', metricsVisible = false;
+let studio: StudioControl | undefined, lighting = 'day', comparison: string[] = [], tourIndex = -1;
+const reviewUrl = (index: number) => `${import.meta.env.BASE_URL}v2/renders/${REVIEW_VIEWS[index].file}`;
+const v1Url = new URL(import.meta.env.BASE_URL === './' ? '../v1/' : `${import.meta.env.BASE_URL.replace(/v2\/$/, '')}v1/`, location.href).href;
 const booths = () => [...BOOTHS, ...state.customBooths];
 const products = () => [...PRODUCTS, ...state.customProducts];
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -22,7 +29,7 @@ app.innerHTML = `
     <button class="mobile-menu icon-button" data-action="sidebar" aria-label="فهرست راسته‌ها">${icon('menu')}</button>
     <a class="brand" href="#" aria-label="کاغذ، شروع بازار"><span class="brand-mark">${folded}</span><span class="brand-name">کاغذ<small>KAGHAZ</small></span><span class="brand-line"></span><span class="brand-tag">یک راسته،<br>هزار امکان.</span></a>
     <nav class="main-nav" aria-label="ناوبری اصلی"><button data-action="view-market" class="active">گشت‌وگذار بازار</button><button data-action="view-catalog">کاتالوگ کالاها</button><button data-action="creator">غرفهٔ من <span class="tiny-new">جدید</span></button></nav>
-    <div class="header-actions"><span class="version-badge"><i></i> نسخهٔ نمایشی ۱.۰</span>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
+    <div class="header-actions"><a class="version-link" href="${v1Url}" title="باز کردن نسخهٔ محفوظ اول">نسخهٔ اول ${icon('arrow', 13)}</a><span class="version-badge"><i></i> نسخهٔ دوم · ۲.۰</span>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
   </header>
   <div class="workspace">
     <aside class="sidebar" aria-label="راسته‌ها و غرفه‌ها">
@@ -40,8 +47,9 @@ app.innerHTML = `
       <div class="view-heading"><div class="breadcrumb">${icon('location', 16)}<span>بهارستان</span><span class="slash">/</span><strong id="current-heading">راستهٔ اصلی</strong></div><div class="heading-trail"><span>کاغذ، یک تجربهٔ نزدیک‌تر</span><i></i></div></div>
       <section class="scene-shell" aria-label="گردش سه‌بعدی در بازار">
         <div id="scene" class="scene"><div class="scene-loading" id="scene-loading"><div class="loading-mark">${folded}</div><span>در حال باز کردن راسته…</span><small>جزئیات ارزش دیدن دارند.</small></div></div>
-        <div class="scene-topline"><span class="scene-location"><i></i> راستهٔ کاغذ <span>BAHARESTAN</span></span><div class="scene-tools">${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
+        <div class="scene-topline"><span class="scene-location"><i></i> راستهٔ کاغذ <span>BAHARESTAN</span></span><div class="scene-tools">${btn('gallery', 'رندرهای Blender', 'layers')}${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
         <div class="scene-editorial" id="scene-editorial"><span>یک قدم نزدیک‌تر به جنس.</span><h2>بازار،<br>از همین‌جا شروع می‌شود.</h2><p>نور را دنبال کنید. هر ویترین، یک دنیای کاغذ.</p><button data-action="start">قدم در راسته ${icon('arrow', 18)}</button></div>
+        <div class="experience-bar"><button data-action="tour">${icon('play', 14)} بازدید راهنما</button><div class="lighting-controls" aria-label="نور محیط">${LIGHTING.map(p => `<button data-lighting="${p.id}" aria-pressed="${p.id === lighting}" class="${p.id === lighting ? 'active' : ''}">${p.label}</button>`).join('')}</div></div><div id="tour-panel" class="tour-panel" hidden></div>
         <div id="hover-label" class="hover-label" hidden></div>
         <div id="booth-focus" class="booth-focus" hidden></div>
         <div class="scene-bottomline"><div class="navigation-controls"><div class="mode-switch"><button data-action="walk" class="active" aria-label="حالت قدم زدن" title="قدم زدن">${icon('walk', 18)}<span>قدم زدن</span></button><button data-action="orbit" aria-label="حالت نمای آزاد" title="نمای آزاد">${icon('orbit', 18)}<span>نمای آزاد</span></button></div>${btn('reset', 'بازگشت به ورودی', 'home')}</div><div class="walk-hint">${icon('keyboard', 17)}<span>جهت‌ها برای حرکت <b>·</b> بکشید و نگاه کنید</span></div><button data-action="map" class="map-toggle">${icon('map', 17)} نقشهٔ راسته</button></div>
@@ -55,6 +63,7 @@ app.innerHTML = `
       <footer class="content-footer"><span>کاغذ <b>·</b> جایی برای دیدن، شناختن و انتخاب کردن.</span><button data-action="help">دربارهٔ این تجربه ${icon('arrow', 14)}</button></footer>
     </main>
   </div>
+  <div id="comparison-tray" class="comparison-tray" hidden></div>
   <dialog id="modal" class="modal"></dialog><div id="toast" class="toast" role="status" aria-live="polite"></div>
   <input type="file" id="restore-file" accept="application/json,.json" hidden/>
 `;
@@ -82,7 +91,7 @@ function renderProducts() {
     el('catalog-title').childNodes[0].textContent = favoriteFilter ? 'انتخاب‌های شما ' : selectedBooth ? `روی پیشخوان ${booths().find(b => b.id === selectedBooth)?.name} ` : 'روی پیشخوان راسته ';
     el('product-grid').innerHTML = visible.length ? visible.map(p => {
         const b = booths().find(b => b.id === p.boothId)!, favorite = state.favorites.includes(p.id), inq = state.inquiry.some(l => l.productId === p.id);
-        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productArt(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">نمای مفهومی</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div></div></article>`;
+        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productArt(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">نمای مفهومی</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
     }).join('') : `<div class="empty-state">${icon(favoriteFilter ? 'heart' : 'search', 34)}<h3>${favoriteFilter ? 'هنوز چیزی نشان نکرده‌اید.' : 'کالایی با این مشخصات پیدا نشد.'}</h3><p>${favoriteFilter ? 'قلب کنار هر کالا، آن را اینجا نگه می‌دارد.' : 'نام کوتاه‌تر یا گرماژ دیگری را امتحان کنید.'}</p><button data-action="clear-filters" class="primary-button">بازگشت به راسته</button></div>`;
 }
 function setView(view: string) {
@@ -133,10 +142,11 @@ function addInquiry(id: string) {
         button.innerHTML = `${icon('check', 18)} در فهرست استعلام`;
 }
 const modal = el<HTMLDialogElement>('modal');
-let previousFocus: HTMLElement | null = null;
+let previousFocus: HTMLElement | null = null, modalRevision=0;
 function openModal(content: string, cls = '') {
+    modalRevision++;
     studioCleanup?.();
-    studioCleanup = undefined;
+    studioCleanup = undefined; studio = undefined;
     if (!modal.open)
         previousFocus = document.activeElement as HTMLElement;
     modal.className = `modal ${cls}`;
@@ -145,8 +155,8 @@ function openModal(content: string, cls = '') {
     if (!modal.open)
         modal.showModal();
 }
-function closeModal() { studioCleanup?.(); studioCleanup = undefined; modal.close(); previousFocus?.focus({ preventScroll: true }); }
-modal.addEventListener('cancel', () => { studioCleanup?.(); studioCleanup = undefined; });
+function closeModal() { modalRevision++;studioCleanup?.(); studioCleanup = undefined; studio = undefined; modal.close(); previousFocus?.focus({ preventScroll: true }); }
+modal.addEventListener('cancel', () => { studioCleanup?.(); studioCleanup = undefined; studio = undefined; });
 modal.addEventListener('click', e => { if (e.target === modal) {
     const r = modal.getBoundingClientRect();
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
@@ -158,13 +168,19 @@ async function showProduct(id: string) {
     if (!p)
         return;
     const b = booths().find(b => b.id === p.boothId)!;
-    openModal(`${modalHead('از نزدیک ببینید', esc(p.name))}<div class="product-dialog-body"><div class="studio-wrap"><div class="studio-heading"><span>${icon('cube', 16)} نمونهٔ سه‌بعدی</span><small>بچرخانید · زوم کنید</small></div><div id="product-studio" class="product-studio">${productArt(p, true)}</div><div class="studio-foot">رنگ و بافت نمایشگر، جایگزین نمونهٔ فیزیکی نیست.</div></div><div class="product-detail"><button class="detail-vendor" data-booth="${b.id}" data-close-first="true"><i style="background:${b.accent}"></i>${esc(b.name)} ${icon('chevron', 15)}</button><p class="product-description">${esc(p.detail)}</p><dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل نمونهٔ سفارش</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl><div class="price-note"><span class="status-dot"></span><div><strong>قیمت، پس از استعلام</strong><small>کالاها و نام غرفه‌ها در این نسخه نمونه‌اند.</small></div></div><div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(state.inquiry.some(l => l.productId === id) ? 'check' : 'plus', 18)} ${state.inquiry.some(l => l.productId === id) ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div></div></div>`, 'product-modal');
+    openModal(`${modalHead('از نزدیک ببینید', esc(p.name))}<div class="product-dialog-body"><div class="studio-wrap"><div class="studio-heading"><span>${icon('cube', 16)} مدل مرجعِ جنس</span><small>بچرخانید · زوم کنید</small></div><div id="product-studio" class="product-studio">${productArt(p, true)}</div><div class="studio-options"><button data-action="explode" aria-pressed="false">${icon('layers', 15)} باز کردن اجزا</button><div>${LIGHTING.map(l => `<button data-studio-light="${l.id}" class="${l.id === 'day' ? 'active' : ''}" aria-pressed="${l.id === 'day'}">${l.label}</button>`).join('')}</div></div><div class="studio-foot">مدلِ خانوادهٔ محصول است؛ اسکن این کالا و معیار دقیق رنگ نیست.</div></div><div class="product-detail"><button class="detail-vendor" data-booth="${b.id}" data-close-first="true"><i style="background:${b.accent}"></i>${esc(b.name)} ${icon('chevron', 15)}</button><p class="product-description">${esc(p.detail)}</p><dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل نمونهٔ سفارش</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl><div class="price-note"><span class="status-dot"></span><div><strong>قیمت، پس از استعلام</strong><small>کالاها و نام غرفه‌ها در این نسخه نمونه‌اند.</small></div></div><div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(state.inquiry.some(l => l.productId === id) ? 'check' : 'plus', 18)} ${state.inquiry.some(l => l.productId === id) ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div></div></div>`, 'product-modal');
+    const revision=modalRevision;
     modal.dataset.product = id;
+    if (!world) {
+        el('product-studio').innerHTML = `<img class="studio-render" src="${reviewUrl(p.kind === 'roll' || p.kind === 'kraft' ? 2 : 1)}" alt="رندر Blender از جزئیات خانوادهٔ محصول"/><span class="render-label">رندر Blender · تصویر ثابت</span>`;
+        modal.querySelector('.studio-options')?.setAttribute('hidden', '');
+    }
     if (world) {
         const { mountStudio } = await import('./scene/studio.ts');
-        if (modal.open && modal.dataset.product === id && el('product-studio')) {
+        if (modal.open && modalRevision===revision && modal.dataset.product === id && el('product-studio')) {
             try {
-                studioCleanup = mountStudio(el('product-studio'), p, world.materials);
+                studio = mountStudio(el('product-studio'), p, world.assets);
+                studioCleanup = () => studio?.dispose();
             }
             catch { /* The catalog illustration remains an accessible fallback. */ }
         }
@@ -216,7 +232,7 @@ async function saveManagedProduct(form: HTMLFormElement) {
         return;
     const data = new FormData(form), id = form.dataset.productId;
     if (!id && state.customProducts.length >= 40) {
-        toast('در نسخهٔ اول حداکثر ۴۰ محصول شخصی ذخیره می‌شود.');
+        toast('در این نسخه حداکثر ۴۰ محصول شخصی ذخیره می‌شود.');
         return;
     }
     const p: Product = { id: id || `custom-${crypto.randomUUID().slice(0, 12)}`, boothId: b.id, name: String(data.get('name')).trim().slice(0, 70), category: b.category, kind: data.get('kind') as Product['kind'], grammage: Math.min(1200, quantity(data.get('grammage'))), color: String(data.get('color')), size: String(data.get('size')).slice(0, 35), unit: String(data.get('unit')).slice(0, 35), detail: String(data.get('detail')).slice(0, 500), minOrder: quantity(data.get('minimum')), sample: true };
@@ -337,6 +353,25 @@ async function openPDF(id: string) { const b = booths().find(b => b.id === id); 
 catch {
     toast('کاتالوگ خوانده نشد.');
 } }
+function reviewTabs() { return REVIEW_VIEWS.map((v,i)=>`<button data-review="${i}" class="${i===0?'active':''}" aria-pressed="${i===0}">${v.title}</button>`).join(''); }
+function showGallery() {
+    openModal(`${modalHead('ساخته‌شده برای کاغذ · Blender / Cycles', 'از حجم تا جنس')}<div class="render-gallery"><img class="review-image" src="${reviewUrl(0)}" alt="${REVIEW_VIEWS[0].detail}"/><div class="review-tabs">${reviewTabs()}</div></div><p class="modal-description gallery-note">این‌ها رندرهای واقعی صحنهٔ تألیف‌شده در Blender هستند. همان خانوادهٔ مدل‌ها در نمای زندهٔ بازار بارگیری می‌شوند؛ این تصاویر، اسکن بازار بهارستان یا ثبت اجرای مرورگر نیستند.</p>`, 'gallery-modal');
+}
+function renderComparisonTray() {
+    comparison=comparison.filter(id=>products().some(p=>p.id===id));
+    const tray=el('comparison-tray');tray.hidden=!comparison.length;
+    tray.innerHTML=`<span>${icon('layers',18)} ${number(comparison.length)} از ۳ کالا</span><div>${comparison.map(id=>`<button data-compare="${id}" title="حذف از مقایسه">${esc(products().find(p=>p.id===id)?.name)} ${icon('close',12)}</button>`).join('')}</div><button data-action="compare" class="primary-button">مقایسه</button><button data-action="clear-comparison" class="icon-button" aria-label="خالی کردن مقایسه">${icon('close',17)}</button>`;
+}
+function showComparison() {
+    const selected=comparison.map(id=>products().find(p=>p.id===id)).filter((p):p is Product=>Boolean(p));
+    const rows:[string,(p:Product)=>string][]=[['غرفه',p=>booths().find(b=>b.id===p.boothId)?.name||''],['گرماژ',p=>`${number(p.grammage)} گرم بر مترمربع`],['ابعاد',p=>p.size],['واحد سفارش',p=>p.unit],['حداقل سفارش',p=>`${number(p.minOrder)} ${p.unit}`],['ویژگی',p=>p.detail]];
+    openModal(`${modalHead('انتخاب آگاهانه', 'مقایسهٔ مشخصات')}<p class="modal-description">ابعاد، گرماژ و واحد هر کالا جداست. رنگ نمایشگر معیار تطبیق نمونهٔ فیزیکی نیست.</p>${selected.length?`<div class="comparison-scroll"><table class="comparison-table"><thead><tr><th>مشخصه</th>${selected.map(p=>`<th><span class="comparison-color" style="background:${p.color}"></span>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>${rows.map(([title,value])=>`<tr><th>${title}</th>${selected.map(p=>`<td>${esc(value(p))}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="modal-footer">${selected.map(p=>`<button class="secondary-button" data-modal-add="${p.id}">${icon('plus',15)} ${esc(p.name)}</button>`).join('')}</div>`:'<p class="modal-description">با دکمهٔ «مقایسهٔ مشخصات» کنار کالاها، تا سه نمونه را انتخاب کنید.</p>'}`, 'comparison-modal');
+}
+function showTourStop() {
+    const stops=[BOOTHS[0],BOOTHS[2],BOOTHS[4],BOOTHS[6]], b=stops[tourIndex];
+    if(!b)return;selectBooth(b.id);el('tour-panel').hidden=false;
+    el('tour-panel').innerHTML=`<div><span class="eyebrow">ایستگاه ${number(tourIndex+1)} از ۴</span><strong>${esc(b.name)}</strong></div><button data-tour-move="-1" ${tourIndex===0?'disabled':''} aria-label="غرفهٔ قبلی">${icon('chevron',17)}</button><button data-tour-move="1" ${tourIndex===3?'disabled':''} aria-label="غرفهٔ بعدی">${icon('arrow',17)}</button>${btn('end-tour','پایان بازدید','close')}`;
+}
 app.addEventListener('click', async (event) => {
     const target = (event.target as HTMLElement).closest<HTMLElement>('button,[data-map-booth]');
     if (!target)
@@ -456,8 +491,43 @@ app.addEventListener('click', async (event) => {
         renderQuality();
         return;
     }
+    if (target.dataset.compare) {
+        const next = toggleComparison(comparison, target.dataset.compare, products().map(p => p.id)); comparison = next.ids;
+        if (next.full) toast('تا سه کالا را کنار هم مقایسه کنید.');
+        renderProducts(); renderComparisonTray(); return;
+    }
+    if (target.dataset.lighting) {
+        lighting = target.dataset.lighting; world?.setLighting(lighting);
+        document.querySelectorAll<HTMLButtonElement>('[data-lighting]').forEach(b => { b.classList.toggle('active', b.dataset.lighting === lighting); b.setAttribute('aria-pressed', String(b.dataset.lighting === lighting)); });
+        if (!world) toast('تغییر نور در نمای سه‌بعدی فعال است؛ تصویر رندرشده ثابت است.');
+        return;
+    }
+    if (target.dataset.studioLight) {
+        studio?.setLight(target.dataset.studioLight);
+        modal.querySelectorAll<HTMLButtonElement>('[data-studio-light]').forEach(b => { const active=b.dataset.studioLight===target.dataset.studioLight;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active)); }); return;
+    }
+    if (target.dataset.review !== undefined) {
+        const index = Math.max(0, Math.min(2, Number(target.dataset.review)||0));
+        const gallery = target.closest('.render-gallery, .render-fallback');
+        const img=gallery?.querySelector<HTMLImageElement>('.review-image');if(img){img.src=reviewUrl(index);img.alt=REVIEW_VIEWS[index].detail;}
+        gallery?.querySelectorAll<HTMLButtonElement>('[data-review]').forEach(b=>{const active=b.dataset.review===String(index);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}); return;
+    }
+    if (target.dataset.tourMove) { tourIndex = Math.max(0, Math.min(3, tourIndex + Number(target.dataset.tourMove)));showTourStop(); return; }
     const action = target.dataset.action;
     switch (action) {
+        case 'gallery':
+            showGallery(); break;
+        case 'compare':
+            showComparison(); break;
+        case 'clear-comparison':
+            comparison=[];renderProducts();renderComparisonTray();if(modal.open)showComparison();break;
+        case 'tour':
+            tourIndex=0;showTourStop();break;
+        case 'end-tour':
+            tourIndex=-1;el('tour-panel').hidden=true;break;
+        case 'explode': {
+            const value=target.getAttribute('aria-pressed')!=='true';studio?.setExploded(value);target.setAttribute('aria-pressed',String(value));target.classList.toggle('active',value);break;
+        }
         case 'view-market':
             setView('market');
             break;
@@ -687,11 +757,14 @@ async function startWorld() {
             metrics: m => { el('metrics').textContent = `${m.draws} draws · ${number(Math.round(m.triangles / 1000))}k tris · CPU ${m.frameMs.toFixed(1)}ms · DPR ${m.dpr} · ${m.mode}`; },
             error: message => toast(message),
         });
-        el('scene-loading').remove();
+        el('scene-loading').remove();world.setLighting(lighting);
         await restoreModels();
     }
     catch (error) {
-        el('scene-loading').innerHTML = `${icon('paper', 36)}<strong>کاتالوگ همیشه باز است.</strong><p>نمایش سه‌بعدی روی این دستگاه آماده نشد.</p><button data-action="view-catalog" class="primary-button">دیدن کالاها ${icon('arrow', 16)}</button>`;
+        el('scene-loading')?.remove();
+        el('scene').classList.add('is-fallback');
+        el('scene').insertAdjacentHTML('beforeend', `<div class="render-fallback"><img class="review-image" src="${reviewUrl(0)}" alt="${REVIEW_VIEWS[0].detail}"/><div class="fallback-copy"><span class="eyebrow">رندر واقعی Blender · تصویر ثابت</span><strong>جنس را از نزدیک ببینید.</strong><p>نمای زندهٔ سه‌بعدی به WebGL2 نیاز دارد.<br>کاتالوگ، مقایسه و ساخت غرفه در دسترس‌اند.</p><div class="review-tabs">${reviewTabs()}</div><button data-action="view-catalog" class="primary-button">دیدن کالاها ${icon('arrow', 16)}</button></div></div>`);
+        document.querySelector('.scene-shell')?.classList.add('fallback-shell');
         el('scene-editorial').classList.add('dismissed');
         toast('برای نمایش سه‌بعدی مرورگر دارای WebGL2 لازم است.');
         console.error(error);

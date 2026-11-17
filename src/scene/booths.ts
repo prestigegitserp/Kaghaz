@@ -3,6 +3,7 @@ import type { Booth, Product } from '../domain/model.ts';
 import { boothPose } from '../domain/model.ts';
 import { Batch, GEOMETRY, softContact } from './batch.ts';
 import { MaterialLibrary, seeded } from './materials.ts';
+import type { AssetId } from './asset-registry.ts';
 export interface Collider {
     minX: number;
     maxX: number;
@@ -22,6 +23,9 @@ export interface BoothCell {
     booth: Booth;
     targets: Target[];
     colliders: Collider[];
+    authored: T.Group;
+    fallback: T.Group;
+    slots: {asset:AssetId;position:[number,number,number];rotation?:number;scale?:number}[];
 }
 function ream(b: Batch, m: MaterialLibrary, x: number, y: number, z: number, angle = 0, large = false, shade = 1): void {
     const w = large ? .7 : .305, d = large ? 1 : .435, h = large ? .14 : .065;
@@ -142,7 +146,7 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
     const a = new Batch(architecture);
     const inventory = new T.Group();
     root.add(inventory);
-    const b = new Batch(inventory);
+    let b = new Batch(inventory);
     const accent = m.color(booth.accent), r = seeded(booth.slot * 91 + 38);
     a.box(m.materials.plaster, [0, 1.85, -4.5], [7.15, 3.7, .18]);
     a.box(m.materials.plaster, [-3.56, 1.85, -2.25], [.16, 3.7, 4.5]);
@@ -193,6 +197,8 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
             }
         }
     }
+    b.finish();
+    const fallback=new T.Group();inventory.add(fallback);b=new Batch(fallback);
     counter(b, m, booth.accent);
     const ps = products.filter(p => p.boothId === booth.id);
     if (booth.category === 'printing') {
@@ -219,8 +225,8 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
         for (let i = 0; i < 6; i++)
             carton(b, m, -2.5 + (i % 2) * .7, .06 + Math.floor(i / 2) * .43, -2.3, .66, .42, .62);
         pallet(b, m, 2.3, -2.6);
-        paperRoll(b, m, inventory, 2.2, -2.6, .4, 1.05);
-        paperRoll(b, m, inventory, 2.75, -3.15, .3, .9);
+        paperRoll(b, m, fallback, 2.2, -2.6, .4, 1.05);
+        paperRoll(b, m, fallback, 2.75, -3.15, .3, .9);
     }
     else {
         paperPallet(b, m, 2.45, -2.6, '#e2dece', booth.slot);
@@ -229,6 +235,8 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
             b.box(m.materials.edge, [-1, .96 + i * .02, -1.02], [.8, .017, .6], [0, i * .016, 0]);
         swatch(b, m, -.1, .96, -1, booth.accent);
     }
+    b.finish();
+    b=new Batch(inventory);
     // Merchant stool; a few small lived-in details, no uncanny placeholder people.
     b.add('cylinder', m.materials.wood, [.4, .58, -2.13], [.24, .07, .24]);
     for (const dx of [-.15, .15])
@@ -268,7 +276,19 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
     collider(0, -3.96, 6.5, .7, 3, false);
     collider(-2.5, -2.6, 1.2, 1.3, 1.2, false);
     collider(2.5, -2.6, 1.3, 1.4, 1.3, false);
-    return { root, inventory, booth, targets, colliders };
+    const authored=new T.Group();authored.visible=false;inventory.add(authored);
+    const slots:BoothCell['slots']=[{asset:'merchant-counter',position:[-.7,0,-1.02]},{asset:'notebook',position:[.55,.935,-1.1],rotation:.18,scale:1.2}];
+    const add=(asset:AssetId,position:[number,number,number],rotation=0,scale=1)=>slots.push({asset,position,rotation,scale});
+    if(booth.category==='packaging'){
+        add('carton-open',[-1.05,.935,-1.02],.08,1.2);add('swatch-fan',[.05,.935,-1.08],-.2,1.7);
+        for(let i=0;i<6;i++)add('carton-closed',[-2.65+(i%2)*.65,.02+Math.floor(i/2)*.34,-2.6],i*.025,1.2);
+        add('wood-pallet',[2.3,0,-2.6]);add('kraft-roll',[2.15,.153,-2.55]);add('kraft-roll',[2.8,.153,-2.85],0,.72);
+    }else{
+        for(const x of [-2.5,2.5]){const z=x>0?-3.1:-2.65;add('wood-pallet',[x,0,z]);for(let i=0;i<3;i++)add('paper-bundle',[x,.153+i*.185,z],i*.008);}
+        if(booth.category==='creative'){add('swatch-fan',[-.8,.935,-1.02],-.2,2.4);add('swatch-fan',[.12,.935,-1.08],.3,1.8);}
+        else{for(let i=0;i<4;i++)add('paper-ream',[-1.15,.935+i*.056,-1.02],i*.025);add('paper-ream',[-.75,.935,-1.02],-.1);add('swatch-fan',[.1,.935,-1.03],0,1.7);}
+    }
+    return { root, inventory, booth, targets, colliders,authored,fallback,slots };
 }
 export function disposeCell(cell: BoothCell): void {
     cell.root.traverse(o => {

@@ -6,3 +6,6 @@ dist/
 .DS_Store
 public/decoders/
 public/assets/Vazirmatn-OFL.txt
+
+.asset-build/
+public/v2/renders/*.png

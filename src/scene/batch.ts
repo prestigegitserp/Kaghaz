@@ -9,6 +9,21 @@ export const GEOMETRY = {
     plane: new T.PlaneGeometry(1, 1),
 };
 type Kind = keyof typeof GEOMETRY;
+const metricGeometry = new Map<string, T.BufferGeometry>();
+/** Architectural brick UVs follow physical dimensions instead of stretching over each unit cube. */
+function boxWithMetricUV(kind:Kind,scale:number[],tile:number[]):T.BufferGeometry {
+    const key=`${kind}/${scale.join(',')}/${tile.join(',')}`;
+    let geometry=metricGeometry.get(key);if(geometry)return geometry;
+    geometry=GEOMETRY[kind].clone();
+    const p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;
+    for(let i=0;i<p.count;i++){
+        const axis=Math.abs(n.getX(i))>.7?0:Math.abs(n.getY(i))>.7?1:2;
+        const u=axis===0?p.getZ(i)*scale[2]:p.getX(i)*scale[0];
+        const v=axis===1?p.getZ(i)*scale[2]:p.getY(i)*scale[1];
+        uv.setXY(i,u/tile[0],v/tile[1]);
+    }
+    metricGeometry.set(key,geometry);return geometry;
+}
 interface Entry {
     matrix: T.Matrix4;
     color: T.Color;
@@ -24,10 +39,12 @@ export class Batch {
     private temp = new T.Object3D();
     constructor(readonly group: T.Group) { }
     add(kind: Kind, material: T.Material, position: number[], scale: number[], rotation: number[] = [0, 0, 0], shade = 1, shadow = true): void {
-        const key = `${kind}/${material.uuid}/${shadow}`;
+        const tile=material.userData.metricUV as number[]|undefined;
+        const metric=tile&&(kind==='box'||kind==='rounded');
+        const key = `${kind}/${material.uuid}/${shadow}${metric?'/'+scale.join(','):''}`;
         let bucket = this.entries.get(key);
         if (!bucket) {
-            bucket = { geometry: GEOMETRY[kind], material, rows: [], shadow };
+            bucket = { geometry: metric?boxWithMetricUV(kind,scale,tile):GEOMETRY[kind], material, rows: [], shadow };
             this.entries.set(key, bucket);
         }
         this.temp.position.set(position[0], position[1], position[2]);

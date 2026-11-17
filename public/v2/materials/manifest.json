@@ -1,0 +1,71 @@
+{
+  "version": 2,
+  "materials": {
+    "paper": {
+      "color": "materials/paper-color.webp",
+      "normal": "materials/paper-normal.webp",
+      "roughness": "materials/paper-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    },
+    "kraft": {
+      "color": "materials/kraft-color.webp",
+      "normal": "materials/kraft-normal.webp",
+      "roughness": "materials/kraft-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    },
+    "walnut": {
+      "color": "materials/walnut-color.webp",
+      "normal": "materials/walnut-normal.webp",
+      "roughness": "materials/walnut-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    },
+    "plaster": {
+      "color": "materials/plaster-color.webp",
+      "normal": "materials/plaster-normal.webp",
+      "roughness": "materials/plaster-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    },
+    "limestone": {
+      "color": "materials/limestone-color.webp",
+      "normal": "materials/limestone-normal.webp",
+      "roughness": "materials/limestone-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    },
+    "brick": {
+      "color": "materials/brick-color.webp",
+      "normal": "materials/brick-normal.webp",
+      "roughness": "materials/brick-rough.webp",
+      "size": [
+        768,
+        768
+      ],
+      "source": "authored-procedural",
+      "normalConvention": "OpenGL +Y"
+    }
+  }
+}

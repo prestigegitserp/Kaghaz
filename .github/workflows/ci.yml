@@ -1,8 +1,9 @@
-name: Validate Kaghaz v1
+name: Validate Kaghaz v2
 on:
   push:
-    branches: [main, 'release/**']
+    branches: [v2]
   pull_request:
+    branches: [v2]
 permissions:
   contents: read
 jobs:
@@ -17,7 +18,9 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          VITE_PUBLIC_BASE: /Kaghaz/v2/
       - uses: actions/upload-artifact@v4
         with:
-          name: kaghaz-v1-dist
+          name: kaghaz-v2-dist
           path: dist

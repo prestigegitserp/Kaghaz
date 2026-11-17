@@ -159,24 +159,26 @@ export class MaterialLibrary {
         this.add('tape', { color: '#a58650', roughness: .5 });
         this.add('lamp', { color: '#fff3ce', emissive: '#ffe7b4', emissiveIntensity: 1.7, roughness: .8 });
         this.add('glass', { color: '#dce4d7', roughness: .22, metalness: .12, transparent: true, opacity: .14, depthWrite: false });
-        // All textures are bundled. The first frame also has deterministic local fallbacks.
         const loader = new T.TextureLoader();
-        for (const name of ['brick', 'plaster', 'wood', 'floor']) {
-            loader.load(`${import.meta.env.BASE_URL}assets/${name}.webp`, texture => {
-                texture.colorSpace = T.SRGBColorSpace;
-                texture.wrapS = texture.wrapT = T.RepeatWrapping;
-                texture.anisotropy = 8;
-                if (name === 'floor')
-                    texture.repeat.set(8, 26);
-                this.textures.add(texture);
-                this.materials[name].map = texture;
-                // Diffuse photos are not normals. A small bump adds grain; measured normals can replace it later.
-                this.materials[name].bumpMap = texture;
-                this.materials[name].bumpScale = name === 'brick' ? .025 : .008;
-                this.materials[name].needsUpdate = true;
-                onTexture();
-            }, undefined, () => { });
+        this.materials.brick.userData.metricUV = [1.2, .8];
+        const sets: Record<string, string> = { brick:'brick', plaster:'plaster', wood:'walnut', floor:'limestone', paper:'paper', kraft:'kraft', cardboard:'kraft' };
+        for (const [materialName, surface] of Object.entries(sets)) {
+            const material=this.materials[materialName];
+            material.color.set('#ffffff');material.bumpMap=null;
+            for(const [suffix,property] of [['color','map'],['normal','normalMap'],['rough','roughnessMap']] as const) {
+                loader.load(`${import.meta.env.BASE_URL}v2/materials/${surface}-${suffix}.webp`,texture=>{
+                    texture.colorSpace=suffix==='color'?T.SRGBColorSpace:T.NoColorSpace;
+                    texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.anisotropy=8;
+                    if(materialName==='floor')texture.repeat.set(8,26);
+                    this.textures.add(texture);material[property]=texture;
+                    if(suffix==='normal')material.normalScale.setScalar(materialName==='brick'?.65:.35);
+                    if(suffix==='rough')material.roughness=1;
+                    material.needsUpdate=true;onTexture();
+                },undefined,()=>{});
+            }
         }
+        loader.load(`${import.meta.env.BASE_URL}v2/materials/wrapper.webp`,texture=>{texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;this.textures.add(texture);this.materials.ream.map=texture;this.materials.ream.needsUpdate=true;onTexture();});
+        loader.load(`${import.meta.env.BASE_URL}v2/materials/paper-edge.webp`,texture=>{texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;this.textures.add(texture);this.materials.edge.map=texture;this.materials.edge.needsUpdate=true;onTexture();});
     }
     add(name: string, params: T.MeshStandardMaterialParameters): T.MeshStandardMaterial { const m = new T.MeshStandardMaterial(params); this.materials[name] = m; this.owned.add(m); return m; }
     color(color: string, roughness = .88): T.MeshStandardMaterial { const key = `color:${color}:${roughness}`; return this.materials[key] || this.add(key, { color, roughness }); }

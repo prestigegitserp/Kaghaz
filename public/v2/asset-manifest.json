@@ -1,0 +1,129 @@
+{
+  "version": 2,
+  "assets": [
+    {
+      "id": "carton-closed",
+      "file": "models/carton-closed.glb",
+      "bytes": 580104,
+      "sourceBytes": 2640116,
+      "triangles": 3026,
+      "materials": 4,
+      "textures": 4,
+      "sha256": "740f5c28105ddea3231a0c2a40fe272d6d78bdc01d3b1aec23b5599fdc9beb25",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "carton-open",
+      "file": "models/carton-open.glb",
+      "bytes": 960168,
+      "sourceBytes": 4774464,
+      "triangles": 3566,
+      "materials": 4,
+      "textures": 7,
+      "sha256": "4c1b30fe90d91f9c2f2389b596638e78dbcf10bd8793d757c56d9b1c7119aab2",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "kraft-roll",
+      "file": "models/kraft-roll.glb",
+      "bytes": 764700,
+      "sourceBytes": 2818608,
+      "triangles": 14640,
+      "materials": 2,
+      "textures": 3,
+      "sha256": "04e7f4006035d23935db4db2458ad75ff53756c033405c0de838475555ea7aa0",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "merchant-counter",
+      "file": "models/merchant-counter.glb",
+      "bytes": 504136,
+      "sourceBytes": 3493160,
+      "triangles": 2700,
+      "materials": 5,
+      "textures": 6,
+      "sha256": "8fc4e56224061d88ec93920e8471c935bd4d378831998924c7f790e1eb17faa5",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "notebook",
+      "file": "models/notebook.glb",
+      "bytes": 385200,
+      "sourceBytes": 2139612,
+      "triangles": 492,
+      "materials": 4,
+      "textures": 4,
+      "sha256": "b7dc0ed6f1ac5cba8775c270e3f212c6bb0e55ef79ccfeeced06e8f75205782a",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "paper-bundle",
+      "file": "models/paper-bundle.glb",
+      "bytes": 462380,
+      "sourceBytes": 2222928,
+      "triangles": 1408,
+      "materials": 4,
+      "textures": 5,
+      "sha256": "2f1aa1a6feb7b38c4f38f092190d13d583afbf84e194473e2344db1959b7fa2e",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "paper-ream",
+      "file": "models/paper-ream.glb",
+      "bytes": 458068,
+      "sourceBytes": 2230952,
+      "triangles": 1178,
+      "materials": 4,
+      "textures": 5,
+      "sha256": "d151c7e44d4c8f2129f26e6b2b54e5f54b9da4030b94c69b9a197e59280f9bdc",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "swatch-fan",
+      "file": "models/swatch-fan.glb",
+      "bytes": 80212,
+      "sourceBytes": 80132,
+      "triangles": 1148,
+      "materials": 9,
+      "textures": 0,
+      "sha256": "cff1956d7a3d212536d9e52e980ecf7fa4c7eaf299d148a2036945c1c56dfc6d",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    },
+    {
+      "id": "wood-pallet",
+      "file": "models/wood-pallet.glb",
+      "bytes": 457184,
+      "sourceBytes": 2042844,
+      "triangles": 4636,
+      "materials": 2,
+      "textures": 3,
+      "sha256": "5ed4e7a568403006001353511f85f0febdd1b76b7bc1cedd6ac46ca72f88ee0b",
+      "units": "meters",
+      "source": "Blender 4.3.2 authored geometry",
+      "compression": "lossless geometry / embedded WebP textures"
+    }
+  ],
+  "renders": [
+    "renders/merchant-wide.webp",
+    "renders/counter-detail.webp",
+    "renders/stock-and-roll.webp"
+  ],
+  "sourceGeometry": "tools/assets/build_assets.py",
+  "sourceMaterials": "tools/assets/make_materials.py"
+}
