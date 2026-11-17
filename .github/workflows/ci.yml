@@ -1,4 +1,4 @@
-name: Validate Kaghaz v1
+name: Validate Kaghaz
 on:
   push:
     branches: [main, 'release/**']
