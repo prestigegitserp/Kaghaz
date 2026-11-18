@@ -4,6 +4,7 @@ import '@fontsource/vazirmatn/600.css';
 import '@fontsource/vazirmatn/700.css';
 import './style.css';
 import './v3.css';
+import './v4.css';
 import { BOOTHS, PRODUCTS } from './domain/catalog.ts';
 import { CATEGORIES, boothPose, emptyState, escapeHtml as esc, inquiryText, normalize, number, parseState, quantity, searchProducts, type Booth, type Category, type Product, type Quality } from './domain/model.ts';
 import { deleteAsset, download, getAsset, loadState, putAsset, saveState } from './domain/storage.ts';
@@ -13,28 +14,43 @@ import type { BazaarWorld } from './scene/world.ts';
 import type { StudioControl } from './scene/studio.ts';
 import { LIGHTING } from './scene/asset-registry.ts';
 import { toggleComparison } from './domain/comparison.ts';
-import { INSPECTION_VIEWS, MATERIAL_NOTES, MATERIAL_PLATES, REVIEW_VIEWS, SHOTS, reviewImage, reviewThumb, type InspectionView, type ShotId } from './domain/review.ts';
+import { INSPECTION_VIEWS, MATERIAL_NOTES, MATERIAL_PLATES, REVIEW_VIEWS, reviewImage, reviewThumb, type InspectionView } from './domain/review.ts';
 import { cutForm, updateCut } from './cut-ui.ts';
+import { HALL, PHOTO_SHOTS, STATION_IDS, type PhotoShotId, type StationId } from './domain/hall.ts';
+import { foldingMarkup, mountFold, proofMarkup, mountProof, surfaceForProduct } from './lab.ts';
 let state = loadState();
 let category: Category = 'all', query = '', selectedBooth: string | undefined, favoriteFilter = false, currentView = 'market';
 let world: BazaarWorld | undefined, studioCleanup: (() => void) | undefined, mode: 'walk' | 'orbit' = 'walk', metricsVisible = false;
 let studio: StudioControl | undefined, lighting = 'day', comparison: string[] = [], tourIndex = -1;
-const versionUrl = (version: 1 | 2) => new URL(`../v${version}/`, location.href).href;
+const versionUrl = (version: 1 | 2 | 3) => new URL(`../v${version}/`, location.href).href;
 const booths = () => [...BOOTHS, ...state.customBooths];
 const products = () => [...PRODUCTS, ...state.customProducts];
+const hallImage = (id:string) => `${import.meta.env.BASE_URL}v4/renders/${id}.webp`;
+const GALLERY = [
+    {id:'hall',title:'سالن بهارستان',detail:'نورگیر سقفی و سه میز کار در سالن نمایش',url:hallImage('hall')},
+    {id:'sample-table',title:'میز نمونه‌ها',detail:'نمونه‌های تحریر، گلاسه و مقوا در سالن',url:hallImage('sample-table')},
+    {id:'fold-counter',title:'میز ساخت جعبه',detail:'الگوی تخت و نمونه‌های بسته‌بندی روی پیشخوان',url:hallImage('fold-counter')},
+    ...REVIEW_VIEWS.slice(2).map(view=>({...view,url:view.id==='ream'?hallImage('ream'):reviewImage(view.id)})),
+];
+const STATION_ART = {
+    samples: { icon:'layers', description:'جنس، مقطع و بافت را از نزدیک ببینید.' },
+    proof: { icon:'sun', description:'یک طرح را روی دو روکش، زیر نور متغیر ببینید.' },
+    fold: { icon:'box', description:'ابعاد را بدهید و الگو را با دست خودتان تا کنید.' },
+};
+const MAP = {x: (x:number)=>100+x*5.87, y:(z:number)=>100+z*5.87};
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const btn = (action: string, label: string, ico: string, extra = '') => `<button type="button" data-action="${action}" class="icon-button" title="${label}" aria-label="${label}" ${extra}>${icon(ico)}</button>`;
 const folded = `<svg viewBox="0 0 42 44" aria-hidden="true"><path d="M6 4h23l8 10v26H6z" fill="#f2eddf"/><path d="m6 4 23 10V4M29 14h8M13 23h15M13 29h11" stroke="#b5a27b" stroke-width="1.5" fill="none"/></svg>`;
 app.innerHTML = `
   <header class="app-header">
-    <button class="mobile-menu icon-button" data-action="sidebar" aria-label="فهرست راسته‌ها">${icon('menu')}</button>
+    <button class="mobile-menu icon-button" data-action="sidebar" aria-controls="showroom-sidebar" aria-expanded="false" aria-label="فهرست غرفه‌ها">${icon('menu')}</button>
     <a class="brand" href="#" aria-label="کاغذ، شروع بازار"><span class="brand-mark">${folded}</span><span class="brand-name">کاغذ<small>KAGHAZ</small></span></a>
     <nav class="main-nav" aria-label="ناوبری اصلی"><button data-action="view-market" class="active">گشت‌وگذار بازار</button><button data-action="view-catalog">کاتالوگ کالاها</button><button data-action="cut">چیدمان برش</button><button data-action="creator">غرفهٔ من</button></nav>
-    <div class="header-actions"><details class="version-menu"><summary>نسخهٔ ۳</summary><div><a href="${versionUrl(2)}">نسخهٔ دوم ${icon('arrow', 13)}</a><a href="${versionUrl(1)}">نسخهٔ اول ${icon('arrow', 13)}</a></div></details>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
+    <div class="header-actions"><details class="version-menu"><summary>نسخهٔ ۴</summary><div><a href="${versionUrl(3)}">نسخهٔ سوم ${icon('arrow', 13)}</a><a href="${versionUrl(2)}">نسخهٔ دوم ${icon('arrow', 13)}</a><a href="${versionUrl(1)}">نسخهٔ اول ${icon('arrow', 13)}</a></div></details>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
   </header>
   <div class="workspace">
-    <aside class="sidebar" aria-label="راسته‌ها و غرفه‌ها">
-      <div class="sidebar-intro"><h1>بازار کاغذ<span>بهارستان، تهران</span></h1></div>
+    <aside class="sidebar" id="showroom-sidebar" aria-label="غرفه‌ها و جست‌وجوی کالا">
+      <div class="sidebar-intro"><h2>فهرست غرفه‌ها</h2>${btn('sidebar', 'بستن فهرست', 'close')}</div>
       <label class="search-box">${icon('search', 18)}<input id="search" type="search" placeholder="کاغذ، گرماژ یا نام غرفه…" aria-label="جستجوی کالا و غرفه" autocomplete="off"/><kbd>/</kbd></label>
       <div class="section-heading"><h2>راسته‌ها</h2><span id="total-products">${number(products().length)} کالا</span></div>
       <div id="categories" class="categories"></div>
@@ -42,27 +58,32 @@ app.innerHTML = `
       <div id="booth-list" class="booth-list"></div>
       <button data-action="favorites" class="favorites-link">${icon('heart', 18)} نشان‌شده‌ها <span id="favorite-count">۰</span></button>
       <div class="sidebar-bottom"><span class="folded-corner"></span><div class="small-store">${icon('store', 24)}</div><strong>این‌جا جای شماست.</strong><p>غرفهٔ خودتان را بسازید.<br>با محصولات و هویت خودتان.</p><button data-action="creator">ساخت غرفه ${icon('arrow', 17)}</button></div>
-      <div class="sidebar-footer"><span class="status-dot"></span> یک بازار در حال ساخته‌شدن <button data-action="help" aria-label="دربارهٔ نسخهٔ نمایشی">${icon('info', 14)}</button></div>
+
     </aside>
     <main class="main-content" id="main-content">
-      <div class="view-heading"><div class="breadcrumb">${icon('location', 16)}<span>بهارستان</span><span class="slash">/</span><strong id="current-heading">راستهٔ اصلی</strong></div><button data-action="gallery" class="text-button render-link">${icon('layers', 16)} گالری رندرها</button></div>
+      <div class="view-heading hall-heading">
+        <div><div class="breadcrumb">${icon('location', 16)}<span>تهران · خیابان ظهیرالاسلام</span></div><h1 id="current-heading">بازار کاغذ بهارستان</h1></div>
+        <div class="hall-heading-actions"><button data-action="sidebar" class="secondary-button">${icon('store', 17)} فهرست غرفه‌ها</button><button data-action="gallery" class="secondary-button render-link">${icon('film', 16)} گالری سالن</button></div>
+      </div>
       <section class="scene-shell" aria-label="گردش سه‌بعدی در بازار">
-        <div id="scene" class="scene" style="--arrival: url('${reviewImage('market')}')"><div class="scene-loading" id="scene-loading"><span>در حال آماده‌سازی نمای زنده…</span></div></div>
+        <div id="scene" class="scene" style="--arrival: url('${hallImage('hall')}')"><div class="scene-loading" id="scene-loading"><span>در حال آماده‌سازی نمای زنده…</span></div></div>
         <div class="scene-topline"><span class="scene-location" id="scene-location"><i></i> بازار سه‌بعدی</span><div class="scene-tools">${btn('shots', 'قاب‌های دوربین', 'film', 'aria-expanded="false" aria-controls="shot-panel"')}${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
-        <div class="scene-editorial" id="scene-editorial"><h2>راستهٔ کاغذ<br><mark>بهارستان</mark></h2><p>بین پیشخوان‌ها قدم بزنید و جنس کاغذ را زیر نور ببینید.</p><button data-action="start">بازدید از اولین غرفه ${icon('arrow', 18)}</button></div>
+        <div class="scene-editorial" id="scene-editorial"><button data-action="start">رفتن به اولین غرفه ${icon('arrow', 17)}</button></div>
+        <div class="station-hotspots" id="station-hotspots">${STATION_IDS.map(id=>`<button data-live-station="${id}" data-station="${id}" style="--station:${HALL.stations[id].accent}" hidden>${icon(STATION_ART[id].icon,17)}${HALL.stations[id].label}<span>↗</span></button>`).join('')}</div>
         <div class="experience-bar"><button data-action="tour">${icon('play', 14)} بازدید راهنما</button><div class="lighting-controls" aria-label="نور محیط">${LIGHTING.map(p => `<button data-lighting="${p.id}" aria-pressed="${p.id === lighting}" class="${p.id === lighting ? 'active' : ''}">${p.label}</button>`).join('')}</div></div><div id="tour-panel" class="tour-panel" hidden></div>
-        <div id="shot-panel" class="shot-panel" hidden><strong>قاب‌های دوربین</strong>${SHOTS.map(shot => `<button data-shot="${shot.id}">${shot.label} ${icon('arrow', 15)}</button>`).join('')}</div>
+        <div id="shot-panel" class="shot-panel" hidden><strong>قاب‌های دوربین</strong>${PHOTO_SHOTS.map(shot => `<button data-shot="${shot.id}">${shot.label} ${icon('arrow', 15)}</button>`).join('')}</div>
         <div id="hover-label" class="hover-label" hidden></div>
         <div id="booth-focus" class="booth-focus" hidden></div>
-        <div class="scene-bottomline"><div class="navigation-controls"><div class="mode-switch"><button data-action="walk" class="active" aria-label="حالت قدم زدن" title="قدم زدن">${icon('walk', 18)}<span>قدم زدن</span></button><button data-action="orbit" aria-label="حالت نمای آزاد" title="نمای آزاد">${icon('orbit', 18)}<span>نمای آزاد</span></button></div>${btn('reset', 'بازگشت به ورودی', 'home')}</div><div class="walk-hint">${icon('keyboard', 17)}<span>جهت‌ها برای حرکت <b>·</b> بکشید و نگاه کنید</span></div><button data-action="map" class="map-toggle">${icon('map', 17)} نقشهٔ راسته</button></div>
+        <div class="scene-bottomline"><div class="navigation-controls"><div class="mode-switch"><button data-action="walk" class="active" aria-label="حالت قدم زدن" title="قدم زدن">${icon('walk', 18)}<span>قدم زدن</span></button><button data-action="orbit" aria-label="حالت نمای آزاد" title="نمای آزاد">${icon('orbit', 18)}<span>نمای آزاد</span></button></div>${btn('reset', 'بازگشت به ورودی', 'home')}</div><div class="walk-hint">${icon('keyboard', 17)}<span>روی کف بزنید تا حرکت کنید <b>·</b> برای نگاه کردن بکشید</span></div><button data-action="map" class="map-toggle">${icon('map', 17)} نقشهٔ سالن</button></div>
         <div class="mini-map" id="mini-map" hidden></div>
         <div id="quality-panel" class="quality-panel" hidden></div>
         <div id="metrics" class="metrics" hidden></div>
         <div class="touch-controls" id="touch-controls"><button data-motion="0,1" aria-label="جلو">↑</button><div><button data-motion="-1,0" aria-label="چپ">←</button><button data-motion="0,-1" aria-label="عقب">↓</button><button data-motion="1,0" aria-label="راست">→</button></div></div>
-        <div class="scene-caption"><span>طراحی سه‌بعدی الهام‌گرفته از بازار بهارستان</span><span id="light-caption">نور ورودی</span></div>
+        <div class="scene-caption"><span>طراحی سه‌بعدی الهام‌گرفته از بازار بهارستان</span><span id="light-caption">نور روز</span></div>
       </section>
-      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><h2 id="catalog-title">روی پیشخوان راسته <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="product-grid" class="product-grid"></div></section>
-      <footer class="content-footer"><span>کاغذ <b>·</b> جایی برای دیدن، شناختن و انتخاب کردن.</span><button data-action="help">دربارهٔ این تجربه ${icon('arrow', 14)}</button></footer>
+      <section class="station-dock" aria-label="میزهای کار بازار">${(['fold','proof','samples'] as const).map(id=>`<button data-station="${id}" class="station-card" style="--station:${HALL.stations[id].accent}"><span class="station-icon">${icon(STATION_ART[id].icon,23)}</span><span><strong>${HALL.stations[id].label}</strong><small>${STATION_ART[id].description}</small></span>${icon('arrow',17)}</button>`).join('')}</section>
+      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><h2 id="catalog-title">روی پیشخوان بازار <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="product-grid" class="product-grid"></div></section>
+      <footer class="content-footer"><span>بازار کاغذ بهارستان</span><button data-action="help">دربارهٔ این تجربه ${icon('arrow', 14)}</button></footer>
     </main>
   </div>
   <div id="comparison-tray" class="comparison-tray" hidden></div>
@@ -88,7 +109,7 @@ function productDisplay(p: Product, large = false) {
     const plate = MATERIAL_PLATES[p.kind];
     if (!plate) return productArt(p, large);
     const description = REVIEW_VIEWS.find(view => view.id === plate)!.detail;
-    const url = large ? reviewImage(plate) : reviewThumb(plate);
+    const url = plate==='ream' ? hallImage(large?'ream':'ream-thumb') : large ? reviewImage(plate) : reviewThumb(plate);
     return `<img class="product-render" src="${url}" alt="${description}" ${large ? '' : 'loading="lazy"'} decoding="async" />`;
 }
 function renderProducts() {
@@ -97,7 +118,7 @@ function renderProducts() {
     el('clear-filter').hidden = !filtered;
     el('all-catalog').hidden = currentView === 'catalog';
     el('result-count').textContent = `${number(result.length)} کالا`;
-    el('catalog-title').childNodes[0].textContent = favoriteFilter ? 'انتخاب‌های شما ' : selectedBooth ? `روی پیشخوان ${booths().find(b => b.id === selectedBooth)?.name} ` : 'روی پیشخوان راسته ';
+    el('catalog-title').childNodes[0].textContent = favoriteFilter ? 'انتخاب‌های شما ' : selectedBooth ? `روی پیشخوان ${booths().find(b => b.id === selectedBooth)?.name} ` : 'روی پیشخوان بازار ';
     el('product-grid').innerHTML = visible.length ? visible.map(p => {
         const b = booths().find(b => b.id === p.boothId)!, favorite = state.favorites.includes(p.id), inq = state.inquiry.some(l => l.productId === p.id);
         return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productDisplay(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">${MATERIAL_PLATES[p.kind] ? 'رندر جنس' : 'نمای مفهومی'}</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
@@ -108,10 +129,10 @@ function setView(view: string) {
     app.classList.toggle('catalog-mode', view === 'catalog');
     document.querySelector('[data-action="view-market"]')?.classList.toggle('active', view === 'market');
     document.querySelector('.main-nav [data-action="view-catalog"]')?.classList.toggle('active', view === 'catalog');
-    el('current-heading').textContent = view === 'catalog' ? 'کاتالوگ کالاها' : selectedBooth ? booths().find(b => b.id === selectedBooth)?.name || 'راستهٔ اصلی' : 'راستهٔ اصلی';
+    el('current-heading').textContent = view === 'catalog' ? 'کاتالوگ کالاها' : selectedBooth ? booths().find(b => b.id === selectedBooth)?.name || 'بازار کاغذ بهارستان' : 'بازار کاغذ بهارستان';
     renderProducts();
 }
-function clearFilters() { category = 'all'; query = ''; selectedBooth = undefined; favoriteFilter = false; el<HTMLInputElement>('search').value = ''; renderSidebar(); renderProducts(); el('booth-focus').hidden = true; el('current-heading').textContent = currentView === 'catalog' ? 'کاتالوگ کالاها' : 'راستهٔ اصلی'; }
+function clearFilters() { category = 'all'; query = ''; selectedBooth = undefined; favoriteFilter = false; el<HTMLInputElement>('search').value = ''; renderSidebar(); renderProducts(); el('booth-focus').hidden = true; el('current-heading').textContent = currentView === 'catalog' ? 'کاتالوگ کالاها' : 'بازار کاغذ بهارستان'; }
 function selectBooth(id: string, focus = true) {
     const b = booths().find(b => b.id === id);
     if (!b)
@@ -125,12 +146,15 @@ function selectBooth(id: string, focus = true) {
     renderSidebar();
     renderProducts();
     el('scene-editorial').classList.add('dismissed');
-    if (focus)
-        world?.focusBooth(id);
+    if (focus && world) {
+        mode='walk';
+        updateMode();
+        world.focusBooth(id);
+    }
     el('current-heading').textContent = b.name;
     el('booth-focus').hidden = false;
     el('booth-focus').innerHTML = `<div class="booth-focus-top"><span class="eyebrow">غرفهٔ ${number(b.slot + 1)}</span>${btn('dismiss-booth', 'بستن اطلاعات غرفه', 'close')}</div><h3>${esc(b.name)}</h3><p>${esc(b.subtitle)}</p><div class="booth-focus-meta"><span>${number(products().filter(p => p.boothId === id).length)} کالای نمایشی</span><span>کاتالوگ نمونه</span></div><div class="booth-focus-actions"><button data-enter="${b.id}" class="primary-button">ورود به غرفه ${icon('arrow', 16)}</button><button data-catalog="${b.id}" class="secondary-button">دیدن کالاها</button></div>${b.catalogKey ? `<button class="text-button attached-catalog" data-pdf="${b.id}">${icon('paper', 15)} باز کردن کاتالوگ PDF</button>` : ''}`;
-    app.classList.remove('sidebar-open');
+    setSidebar(false);
     renderMap();
 }
 function toggleFavorite(id: string) { state.favorites = state.favorites.includes(id) ? state.favorites.filter(p => p !== id) : [...state.favorites, id]; persist(); renderProducts(); document.querySelector(`[data-modal-favorite="${id}"]`)?.classList.toggle('saved', state.favorites.includes(id)); }
@@ -152,6 +176,10 @@ function addInquiry(id: string) {
 }
 const modal = el<HTMLDialogElement>('modal');
 let previousFocus: HTMLElement | null = null, modalRevision=0;
+function setSidebar(open:boolean) {
+    app.classList.toggle('sidebar-open',open);
+    app.querySelector('[aria-controls="showroom-sidebar"]')?.setAttribute('aria-expanded',String(open));
+}
 function openModal(content: string, cls = '') {
     modalRevision++;
     studioCleanup?.();
@@ -199,6 +227,7 @@ async function showProduct(id: string) {
             <dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل سفارش نمونه</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl>
             <div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(inInquiry ? 'check' : 'plus', 18)} ${inInquiry ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div>
             ${sheet ? `<button class="text-button detail-cut" data-cut-product="${p.id}">${icon('grid', 16)} محاسبهٔ چیدمان برش ${icon('arrow', 15)}</button>` : ''}
+            <button class="text-button detail-cut" data-proof-product="${p.id}">${icon('sun',16)} دیدن چاپ روی این جنس ${icon('arrow',15)}</button>
           </div>
         </div>`, 'product-modal');
     const revision = modalRevision, assets = world?.assets;
@@ -230,15 +259,24 @@ function showInquiry() {
     }).join('') : `<div class="empty-state">${icon('bag', 38)}<h3>پیشخوان شما هنوز خالی است.</h3><p>از کنار هر کالا، آن را به این فهرست اضافه کنید.</p><button class="primary-button" data-action="close">ادامهٔ گشت‌وگذار</button></div>`}</div>${state.inquiry.length ? `<label class="field-label">توضیحات درخواست<textarea id="inquiry-notes" maxlength="3000" rows="3" placeholder="مثلاً: محل تحویل، زمان مورد نیاز، نوع بسته‌بندی…">${esc(state.notes)}</textarea></label><div class="modal-footer"><button class="primary-button" data-action="download-inquiry">${icon('download', 17)} دریافت فایل درخواست</button><button class="secondary-button" data-action="copy-inquiry">${icon('copy', 17)} کپی متن</button></div>` : ''}`, 'inquiry-modal');
 }
 function renderMap() {
-    el('mini-map').innerHTML = `<div class="map-heading"><strong>راسته، در یک نگاه</strong>${btn('map', 'بستن نقشه', 'close')}</div><svg viewBox="0 0 180 286" role="img" aria-label="نقشهٔ غرفه‌های بازار"><rect x="70" y="12" width="40" height="258" fill="#e8e1d1" rx="3"/><path d="M90 21v238" stroke="#bdab85" stroke-dasharray="3 4"/>${booths().map(b => {
-        const x = b.slot % 2 === 0 ? 14 : 116, y = 220 - Math.floor(b.slot / 2) * 46;
-        return `<g data-map-booth="${b.id}" tabindex="0" role="button" aria-label="رفتن به ${esc(b.name)}"><rect x="${x}" y="${y}" width="50" height="37" rx="3" fill="${b.id === selectedBooth ? b.accent : '#dad6c8'}" stroke="${b.id === selectedBooth ? b.accent : '#c7c0ac'}"/><text x="${x + 25}" y="${y + 23}" fill="${b.id === selectedBooth ? '#fff' : '#465143'}" text-anchor="middle" font-size="12" font-family="Vazirmatn">${number(b.slot + 1)}</text></g>`;
-    }).join('')}<circle id="map-player" cx="90" cy="267" r="4" fill="#455f4e" stroke="#fff" stroke-width="2"/><text x="90" y="283" text-anchor="middle" fill="#7a7e6d" font-family="Vazirmatn" font-size="8">ورودی بازار</text></svg><small>روی شمارهٔ غرفه بزنید.</small>`;
+    el('mini-map').innerHTML = `<div class="map-heading"><strong>نقشهٔ سالن</strong>${btn('map', 'بستن نقشه', 'close')}</div><svg viewBox="0 0 200 200" role="group" aria-label="نقشه و مسیرهای بازار">
+        <rect x="8" y="9" width="184" height="178" fill="#eae6da" stroke="#cfccb8" rx="7"/>
+        ${booths().map(b=>{
+            const pose=boothPose(b.slot),x=MAP.x(pose.x),z=MAP.y(pose.z);
+            return `<g data-map-booth="${b.id}" tabindex="0" role="button" aria-label="رفتن به ${esc(b.name)}"><rect x="${x-13}" y="${z-10}" width="26" height="20" rx="4" fill="${b.accent}" opacity="${b.id===selectedBooth?1:.66}"/><text x="${x}" y="${z+4}" text-anchor="middle" fill="white" font-size="10">${number(b.slot+1)}</text></g>`;
+        }).join('')}
+        ${STATION_IDS.map(id=>{
+            const [x,z]=HALL.stations[id].position;
+            return `<g data-map-station="${id}" tabindex="0" role="button" aria-label="${HALL.stations[id].label}"><circle cx="${MAP.x(x)}" cy="${MAP.y(z)}" r="7" fill="${HALL.stations[id].accent}" stroke="#fff" stroke-width="2"/></g>`;
+        }).join('')}
+        <circle id="map-player" cx="${MAP.x(HALL.entry[0])}" cy="${MAP.y(HALL.entry[2])}" r="4" fill="#254743" stroke="#fff" stroke-width="2" pointer-events="none"/>
+        <text x="100" y="196" text-anchor="middle" fill="#546052" font-size="8">ورودی</text>
+    </svg><small>غرفه یا میز کار را انتخاب کنید.</small>`;
 }
 function renderQuality() {
     el('quality-panel').innerHTML = `<div class="map-heading"><strong>کیفیت تصویر</strong>${btn('quality', 'بستن تنظیمات', 'close')}</div>${([['auto', 'خودکار', 'با توجه به دستگاه شما'], ['high', 'جزئیات بیشتر', 'سایه و عمق بیشتر'], ['balanced', 'متعادل', 'انتخاب مناسب بیشتر دستگاه‌ها'], ['low', 'سبک', 'برای موبایل و دستگاه ضعیف']] as const).map(([id, title, desc]) => `<button data-quality="${id}" class="quality-option ${state.quality === id ? 'active' : ''}"><span><strong>${title}</strong><small>${desc}</small></span>${state.quality === id ? icon('check', 16) : ''}</button>`).join('')}<button class="diagnostic-toggle" data-action="diagnostics">${icon('settings', 14)} نمایش آمار واقعی رندر</button>`;
 }
-function showHelp() { openModal(`${modalHead('خوش آمدید', 'بازار را کشف کنید.')}<div class="help-intro"><span class="help-icon">${icon('walk', 34)}</span><p>در راسته قدم بزنید؛ روی نام غرفه یا نمونهٔ روی پیشخوان بزنید و جنس را از نزدیک ببینید.</p></div><div class="help-grid"><div>${icon('walk', 23)}<strong>قدم زدن</strong><p>با جهت‌ها یا W A S D حرکت کنید. برای نگاه کردن تصویر را بکشید. روی موبایل از جهت‌های پایین تصویر استفاده کنید.</p></div><div>${icon('store', 23)}<strong>غرفه و کالا</strong><p>از فهرست سمت راست یا نقشه به غرفه بروید. «ورود به غرفه» شما را از کنار پیشخوان داخل می‌برد.</p></div><div>${icon('bag', 23)}<strong>فهرست استعلام</strong><p>محصول‌ها را انتخاب کنید، تعداد بدهید و متن یا فایل درخواست را دریافت کنید. این نسخه ارسال سفارش ندارد.</p></div><div>${icon('cube', 23)}<strong>غرفهٔ شما</strong><p>نام، محصولات، فایل PDF و مدل GLB خود را وارد کنید. داده‌ها روی همین دستگاه و مرورگر نگه داشته می‌شوند.</p></div></div><div class="demo-disclosure"><strong>حدود این نسخه</strong><p>فضا از بازار بهارستان الهام گرفته شده و نام غرفه‌ها و کالاها برای نمایش‌اند. اطلاعات غرفهٔ شخصی، PDF و مدل روی همین مرورگر ذخیره می‌شوند.</p></div><div class="modal-footer"><button data-action="close" class="primary-button">برویم به راسته ${icon('arrow', 17)}</button><button data-action="export-workspace" class="text-button">پشتیبان انتخاب‌های من</button></div>`, 'help-modal'); }
+function showHelp() { openModal(`${modalHead('خوش آمدید', 'بازار را کشف کنید.')}<div class="help-intro"><span class="help-icon">${icon('walk', 34)}</span><p>در راسته قدم بزنید؛ روی نام غرفه یا نمونهٔ روی پیشخوان بزنید و جنس را از نزدیک ببینید.</p></div><div class="help-grid"><div>${icon('walk', 23)}<strong>قدم زدن</strong><p>روی کف سالن بزنید یا با جهت‌های صفحه‌کلید حرکت کنید. تصویر را برای تغییر نگاه بکشید.</p></div><div>${icon('store', 23)}<strong>غرفه و کالا</strong><p>از فهرست غرفه‌ها یا نقشهٔ سالن به فروشگاه بروید. «ورود به غرفه» شما را از کنار پیشخوان داخل می‌برد.</p></div><div>${icon('bag', 23)}<strong>فهرست استعلام</strong><p>محصول‌ها را انتخاب کنید، تعداد بدهید و متن یا فایل درخواست را دریافت کنید. این نسخه ارسال سفارش ندارد.</p></div><div>${icon('cube', 23)}<strong>غرفهٔ شما</strong><p>نام، محصولات، فایل PDF و مدل GLB خود را وارد کنید. داده‌ها روی همین دستگاه و مرورگر نگه داشته می‌شوند.</p></div></div><div class="demo-disclosure"><strong>حدود این نسخه</strong><p>فضا از بازار بهارستان الهام گرفته شده و نام غرفه‌ها و کالاها برای نمایش‌اند. اطلاعات غرفهٔ شخصی، PDF و مدل روی همین مرورگر ذخیره می‌شوند.</p></div><div class="modal-footer"><button data-action="close" class="primary-button">برویم به راسته ${icon('arrow', 17)}</button><button data-action="export-workspace" class="text-button">پشتیبان انتخاب‌های من</button></div>`, 'help-modal'); }
 function showCreator(editId?: string) {
     const b = editId === 'new' ? undefined : state.customBooths.find(b => b.id === editId) || state.customBooths[0];
     const ownProducts = b ? state.customProducts.filter(p => p.boothId === b.id) : [];
@@ -388,12 +426,29 @@ catch {
     toast('کاتالوگ خوانده نشد.');
 } }
 function showGallery() {
-    const first = REVIEW_VIEWS[0];
-    openModal(`${modalHead('Blender · Cycles', 'گالری رندرها')}
+    const first = GALLERY[0];
+    openModal(`${modalHead('Blender · Cycles', 'گالری سالن و جنس')}
         <div class="render-gallery">
-          <figure class="gallery-figure"><div class="gallery-stage"><img class="review-image" src="${reviewImage(first.id)}" alt="${first.detail}" /></div><figcaption class="gallery-caption"><div><strong id="gallery-title">${first.title}</strong><p id="gallery-description">${first.detail}</p></div><button data-action="gallery-zoom" class="secondary-button" aria-pressed="false">${icon('search', 16)} بزرگ‌نمایی</button><a class="text-button" id="gallery-download" download="Kaghaz-${first.id}.webp" href="${reviewImage(first.id)}">${icon('download', 16)} تصویر کامل</a></figcaption></figure>
-          <div class="review-tabs" aria-label="قاب‌ها">${REVIEW_VIEWS.map((view, index) => `<button data-review="${view.id}" class="${index === 0 ? 'active' : ''}" aria-pressed="${index === 0}">${view.title}</button>`).join('')}</div>
+          <figure class="gallery-figure"><div class="gallery-stage"><img class="review-image" src="${first.url}" alt="${first.detail}" /></div><figcaption class="gallery-caption"><div><strong id="gallery-title">${first.title}</strong><p id="gallery-description">${first.detail}</p></div><button data-action="gallery-zoom" class="secondary-button" aria-pressed="false">${icon('search', 16)} بزرگ‌نمایی</button><a class="text-button" id="gallery-download" download="Kaghaz-${first.id}.webp" href="${first.url}">${icon('download', 16)} تصویر کامل</a></figcaption></figure>
+          <div class="review-tabs" aria-label="قاب‌ها">${GALLERY.map((view, index) => `<button data-review="${view.id}" class="${index === 0 ? 'active' : ''}" aria-pressed="${index === 0}">${view.title}</button>`).join('')}</div>
         </div>`, 'gallery-modal');
+}
+function showStation(id:StationId,product?:Product) {
+    const station=HALL.stations[id];
+    const footer=`<div class="lab-footer">${world?`<button class="text-button" data-visit-station="${id}">${icon('location',16)} رفتن به میز در سالن</button>`:''}
+        ${STATION_IDS.filter(other=>other!==id).map(other=>`<button class="text-button" data-station="${other}">${icon(STATION_ART[other].icon,16)} ${HALL.stations[other].label}</button>`).join('')}
+    </div>`;
+    if(id==='samples'){
+        const cards=['a4-80','gloss-135','box-mail','kraft-roll'].map(key=>products().find(item=>item.id===key)!);
+        openModal(`${modalHead('بازار کاغذ بهارستان',station.label)}<div class="lab-samples">${cards.map(p=>`<article>
+            <button data-product="${p.id}" class="sample-art">${productDisplay(p)}</button><h3>${esc(p.name)}</h3>
+            <span>${number(p.grammage)} گرم بر مترمربع</span><div><button class="secondary-button" data-product="${p.id}">بررسی جنس</button><button class="icon-button" data-proof-product="${p.id}" title="نور و چاپ" aria-label="نور و چاپ ${esc(p.name)}">${icon('sun',18)}</button></div>
+        </article>`).join('')}</div>${footer}`,'lab-modal');
+        return;
+    }
+    const content=id==='fold'?foldingMarkup():proofMarkup(surfaceForProduct(product?.kind));
+    openModal(`${modalHead('میز کار بهارستان',id==='fold'?'ساخت و تا زدن جعبه':'مقایسهٔ نور و چاپ')}${content}${footer}`,'lab-modal');
+    studioCleanup=id==='fold'?mountFold(modal):mountProof(modal);
 }
 function showCut(product?: Product) {
     openModal(`${modalHead(product ? esc(product.name) : 'محاسبهٔ ورق', 'چیدمان برش')}${cutForm(product)}`, 'cut-modal');
@@ -418,11 +473,30 @@ function showTourStop() {
     el('tour-panel').innerHTML=`<div><span class="eyebrow">ایستگاه ${number(tourIndex+1)} از ۴</span><strong>${esc(b.name)}</strong></div><button data-tour-move="-1" ${tourIndex===0?'disabled':''} aria-label="غرفهٔ قبلی">${icon('chevron',17)}</button><button data-tour-move="1" ${tourIndex===3?'disabled':''} aria-label="غرفهٔ بعدی">${icon('arrow',17)}</button>${btn('end-tour','پایان بازدید','close')}`;
 }
 app.addEventListener('click', async (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>('button,[data-map-booth]');
+    const target = (event.target as HTMLElement).closest<HTMLElement>('button,[data-map-booth],[data-map-station]');
     if (!target)
         return;
     if (target.dataset.closeFirst)
         closeModal();
+    const station = target.dataset.station || target.dataset.mapStation;
+    if (station && STATION_IDS.includes(station as StationId)) {
+        showStation(station as StationId);
+        return;
+    }
+    if (target.dataset.visitStation) {
+        closeModal();
+        setView('market');
+        mode='walk';
+        updateMode();
+        el('booth-focus').hidden=true;
+        el('scene-editorial').classList.add('dismissed');
+        world?.focusStation(target.dataset.visitStation as StationId);
+        return;
+    }
+    if (target.dataset.proofProduct) {
+        showStation('proof',products().find(p=>p.id===target.dataset.proofProduct));
+        return;
+    }
     if (target.dataset.category) {
         category = target.dataset.category as Category;
         selectedBooth = undefined;
@@ -568,15 +642,15 @@ app.addEventListener('click', async (event) => {
         return;
     }
     if (target.dataset.review) {
-        const view = REVIEW_VIEWS.find(item => item.id === target.dataset.review);
+        const view = GALLERY.find(item => item.id === target.dataset.review);
         if (!view) return;
         const img = modal.querySelector<HTMLImageElement>('.review-image')!;
-        img.src = reviewImage(view.id);
+        img.src = view.url;
         img.alt = view.detail;
         el('gallery-title').textContent = view.title;
         el('gallery-description').textContent = view.detail;
         const link = el<HTMLAnchorElement>('gallery-download');
-        link.href = reviewImage(view.id);
+        link.href = view.url;
         link.download = `Kaghaz-${view.id}.webp`;
         modal.querySelectorAll<HTMLButtonElement>('[data-review]').forEach(button => {
             const selected = button.dataset.review === view.id;
@@ -586,7 +660,7 @@ app.addEventListener('click', async (event) => {
         return;
     }
     if (target.dataset.shot) {
-        world?.frameShot(target.dataset.shot as ShotId);
+        world?.frameShot(target.dataset.shot as PhotoShotId);
         mode = 'walk';
         updateMode();
         el('scene-editorial').classList.add('dismissed');
@@ -663,7 +737,7 @@ app.addEventListener('click', async (event) => {
             clearFilters();
             break;
         case 'sidebar':
-            app.classList.toggle('sidebar-open');
+            setSidebar(!app.classList.contains('sidebar-open'));
             break;
         case 'start':
             el('scene-editorial').classList.add('dismissed');
@@ -674,6 +748,8 @@ app.addEventListener('click', async (event) => {
             break;
         case 'reset':
             clearFilters();
+            mode='walk';
+            updateMode();
             world?.reset();
             if (world) el('scene-editorial').classList.remove('dismissed');
             break;
@@ -727,7 +803,7 @@ app.addEventListener('click', async (event) => {
             }
             break;
         case 'export-workspace':
-            download('Kaghaz-Workspace-v3.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+            download('Kaghaz-Workspace-v4.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
             toast('فایل پشتیبان شامل داده‌هاست؛ مدل و PDF را جدا نگه دارید.');
             break;
         case 'restore-workspace':
@@ -823,18 +899,19 @@ el('restore-file').addEventListener('change', async (event) => {
 document.addEventListener('keydown', e => {
     if (e.code === 'Slash' && !(e.target as HTMLElement).closest('input,textarea,dialog')) {
         e.preventDefault();
+        setSidebar(true);
         el('search').focus();
-        app.classList.add('sidebar-open');
     }
     if (e.code === 'F3') {
         e.preventDefault();
         metricsVisible = !metricsVisible;
         el('metrics').hidden = !metricsVisible;
     }
-    const target = (e.target as HTMLElement).closest<HTMLElement>('[data-map-booth]');
+    const target = (e.target as HTMLElement).closest<HTMLElement>('[data-map-booth],[data-map-station]');
     if (target && (e.code === 'Enter' || e.code === 'Space')) {
         e.preventDefault();
-        selectBooth(target.dataset.mapBooth!);
+        if (target.dataset.mapStation) showStation(target.dataset.mapStation as StationId);
+        else if (target.dataset.mapBooth) selectBooth(target.dataset.mapBooth);
     }
 });
 for (const button of document.querySelectorAll<HTMLElement>('[data-motion]')) {
@@ -857,12 +934,24 @@ async function startWorld() {
         const { BazaarWorld } = await import('./scene/world.ts');
         world = new BazaarWorld(el('scene'), booths(), products(), state.quality, {
             select: (id, product) => product ? showProduct(product) : selectBooth(id),
+            station: id => showStation(id),
+            hotspots: spots => spots.forEach(({id,x,y,visible})=>{
+                const button=app.querySelector<HTMLButtonElement>(`[data-live-station="${id}"]`)!;
+                button.hidden=!visible;
+                button.style.left=`${x}%`;
+                button.style.top=`${y}%`;
+            }),
             hover: (text, x, y) => { const label = el('hover-label'); label.hidden = !text; if (text) {
                 label.textContent = text;
                 label.style.left = `${Math.max(10, Math.min(el('scene').clientWidth - 160, x + 14))}px`;
                 label.style.top = `${Math.max(70, y - 34)}px`;
             } },
-            pose: (x, z) => { const dot = document.getElementById('map-player'); dot?.setAttribute('cx', String(90 + x * 5.7)); dot?.setAttribute('cy', String(267 - (17.4 - z) * 5.75)); },
+            pose: (x,z) => {
+                const dot=el('map-player');
+                dot?.setAttribute('cx',String(MAP.x(x)));
+                dot?.setAttribute('cy',String(MAP.y(z)));
+                el('scene').dataset.pose=`${x.toFixed(2)},${z.toFixed(2)}`;
+            },
             metrics: m => { el('metrics').textContent = `${m.draws} draws · ${number(Math.round(m.triangles / 1000))}k tris · CPU ${m.frameMs.toFixed(1)}ms · DPR ${m.dpr} · ${m.mode}`; },
             error: message => toast(message),
         }, context);
@@ -879,7 +968,7 @@ async function startWorld() {
             button.disabled = true;
             button.title = 'ویژهٔ نمای زندهٔ WebGL2';
         }
-        el('scene-editorial').innerHTML = `<h2>راستهٔ کاغذ<br><mark>بهارستان</mark></h2><p>نماهای رندرشدهٔ بازار را ببینید و از کاتالوگ جنس‌ها را بررسی کنید.</p><button data-action="gallery">تماشای رندرها ${icon('arrow', 18)}</button>`;
+        el('scene-editorial').innerHTML = `<button data-action="gallery">گالری سالن ${icon('arrow',17)}</button>`;
         if (context) console.warn('Market rendering unavailable', error);
     }
 }

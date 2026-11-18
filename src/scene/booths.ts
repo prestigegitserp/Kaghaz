@@ -1,9 +1,10 @@
 import * as T from 'three';
 import type { Booth, Product } from '../domain/model.ts';
 import { boothPose } from '../domain/model.ts';
-import { Batch, GEOMETRY, softContact } from './batch.ts';
+import { Batch, softContact } from './batch.ts';
 import { MaterialLibrary, seeded } from './materials.ts';
 import type { AssetId } from './asset-registry.ts';
+import { STOCK_COLORS } from './architecture.ts';
 export interface Collider {
     minX: number;
     maxX: number;
@@ -118,201 +119,164 @@ function swatch(b: Batch, m: MaterialLibrary, x: number, y: number, z: number, a
     });
     b.add('cylinder', m.materials.brass, [x, y + .04, z], [.016, .018, .016]);
 }
-function counter(b: Batch, m: MaterialLibrary, accent: string): void {
-    b.box(m.materials.darkwood, [-.7, .44, -1.02], [3.45, .87, .8], [], .85, true);
-    b.box(m.materials.wood, [-.7, .9, -1.02], [3.65, .08, .98], [], 1, true);
-    for (const x of [-1.83, -.7, .43]) {
-        b.box(m.color(accent), [x, .48, -.605], [1, .65, .012]);
-        b.box(m.materials.brass, [x, .77, -.591], [.85, .008, .008]);
-    }
-    b.box(m.materials.dark, [-.7, .09, -.58], [3.4, .09, .02]);
-    // Ledger, pen and calculator make the desk a recognisable merchant's workspace.
-    b.box(m.materials.edge, [.45, .965, -1.08], [.29, .035, .38], [0, -.18, 0]);
-    b.box(m.color(accent), [.45, .987, -1.08], [.3, .008, .39], [0, -.18, 0]);
-    b.box(m.materials.dark, [-1.85, .973, -1.11], [.12, .045, .18], [.12, .15, 0], 1, true);
-    b.box(m.materials.glass, [-1.85, 1.002, -1.16], [.09, .004, .045], [-.1, .15, 0]);
-    for (let i = 0; i < 12; i++)
-        b.box(m.color(i === 11 ? '#a07b49' : '#b3b3a4'), [-1.89 + (i % 3) * .035, 1.003, -1.09 + Math.floor(i / 3) * .027], [.023, .005, .016]);
-    b.add('cylinder', m.materials.metal, [.12, .958, -1.05], [.005, .24, .005], [0, 0, Math.PI / 2]);
-}
-export function createBooth(booth: Booth, products: Product[], m: MaterialLibrary): BoothCell {
-    const root = new T.Group();
+export function createBooth(booth: Booth, products: Product[], library: MaterialLibrary): BoothCell {
+    const root = new T.Group(), pose = boothPose(booth.slot), m = library.materials;
+    const architecture = new T.Group(), inventory = new T.Group(), authored = new T.Group(), fallback = new T.Group();
+    const shade = library.color(booth.accent, .54), metal = library.color('#405559', .47);
+    const cream = library.color('#e9e6d8'), rng = seeded(booth.slot * 91 + 38);
+    const isBoard = booth.category === 'board', isCreative = booth.category === 'creative';
+    const isPack = booth.category === 'packaging', swatches = isBoard || isCreative;
     root.name = `booth:${booth.id}`;
-    const pose = boothPose(booth.slot);
     root.position.set(pose.x, 0, pose.z);
     root.rotation.y = pose.rotation;
-    const architecture = new T.Group();
-    root.add(architecture);
-    const a = new Batch(architecture);
-    const inventory = new T.Group();
-    root.add(inventory);
-    let b = new Batch(inventory);
-    const accent = m.color(booth.accent), r = seeded(booth.slot * 91 + 38);
-    a.box(m.materials.plaster, [0, 1.85, -4.5], [7.15, 3.7, .18]);
-    a.box(m.materials.plaster, [-3.56, 1.85, -2.70], [.16, 3.7, 3.6]);
-    a.box(m.materials.plaster, [3.56, 1.85, -2.70], [.16, 3.7, 3.6]);
-    a.box(m.materials.wood, [0, .018, -2.25], [7, .035, 4.5], [], .8);
-    a.box(m.materials.plaster, [0, 3.84, -2.25], [7.2, .2, 4.7]);
-    a.box(m.materials.darkwood, [0, 3.03, -.06], [7.15, .16, .22]);
-    a.box(accent, [0, 3.52, .03], [6.7, .77, .22]);
-    // Real readable Persian texture on a shallow framed fascia.
-    const signMaterial = m.sign(booth.name, booth.subtitle, booth.accent);
-    const sign = new T.Mesh(new T.PlaneGeometry(5.25, .7), signMaterial);
-    sign.position.set(0, 3.52, .15);
-    architecture.add(sign);
+    root.add(architecture, inventory);
+    inventory.add(fallback, authored);
+    authored.visible = false;
+
+    const a = new Batch(architecture), b = new Batch(inventory), details = new Batch(fallback);
+    a.box(m.plaster, [0, 1.74, -3.96], [6.15, 3.48, .13], [], 1);
+    a.box(m.wood, [0,.021,-1.98], [6.14,.049,3.98], [], 1, false, false);
+    a.box(shade, [0,3.32,-.061], [6.14,.60,.36], [], 1, true);
+    a.box(cream, [0,3.65,-.064], [6.17,.074,.38], [], 1, true);
+    a.box(m.lamp, [0,3.012,.047], [5.65,.018,.035], [], 1, false, false);
+    const sign = new T.Mesh(new T.PlaneGeometry(4.45, .52), library.sign(booth.name, booth.subtitle, booth.accent));
+    sign.position.set(0, 3.32, .128);
     sign.userData.ownedGeometry = true;
-    for (const x of [-3.53, 3.53]) {
-        a.box(m.materials.brick, [x, 1.58, .01], [.44, 3.16, .49]);
-        a.box(m.materials.wood, [x, .14, .01], [.51, .28, .56], [], .7);
-        a.box(m.materials.brass, [x, 2.85, .28], [.2, .12, .015]);
+    architecture.add(sign);
+    for (const x of [-3.01, 3.01]) {
+        a.box(metal, [x,1.51,-.055], [.103,3.04,.242], [], 1, true);
+        a.box(m.plaster, [x,1.64,-3.31], [.13,3.28,1.28], [], 1);
+        a.box(shade, [x,.092,-1.005], [.041,.12,1.63], [], .78, false, false);
     }
-    for (let i = 0; i < 10; i++)
-        a.box(m.materials.metal, [0, 3.09 + i * .018, -.11], [6.65, .014, .25], [], .75, false, false);
-    a.box(m.materials.lamp, [0, 3.14, -1.4], [2.7, .025, .1], [], 1, false, false);
-    a.box(m.materials.metal, [0, 3.19, -1.4], [2.8, .08, .14], [], .8, false, false);
-    const standX = -2.88, standZ = -.375;
-    for (const x of [standX - .34, standX + .34])
-        a.box(m.materials.metal, [x, .52, standZ], [.032, 1.04, .54], [], .84);
-    for (const y of [.16, .49, .83]) {
-        a.box(m.materials.wood, [standX, y, standZ], [.72, .036, .55], [], .84);
-        a.box(accent, [standX, y + .018, standZ + .27], [.68, .044, .021], [], .88);
-        if (booth.category === 'packaging') {
-            carton(a, m, standX - .07, y + .027, standZ - .04, .40, .23, .37, y > .8);
-        } else if (booth.category === 'creative' || booth.category === 'board') {
-            const shades = booth.category === 'creative' ? ['#d6a979', '#ad7660', '#7d9690', '#dcd7bb'] : ['#e1dbca', '#eee9da', '#d2c7aa', '#c9c6ba'];
-            for (let i = 0; i < shades.length; i++)
-                a.box(m.color(shades[i]), [standX + (i - 1.5) * .014, y + .041 + i * .021, standZ - .022],
-                    [.58, .020, .411], [0, (r() - .5) * .06, 0], .89 + i * .027);
-        } else {
-            for (const x of [standX - .16, standX + .16])
-                for (let i = 0; i < 3; i++)
-                    ream(a, m, x + (r() - .5) * .021, y + .049 + i * .068, standZ, (r() - .5) * .075);
-        }
-    }
-    for (const x of [-2.45, 2.45]) {
-        a.box(m.materials.brass, [x, 2.92, .14], [.15, .11, .11], [], .82);
-        a.add('sphere', m.materials.lamp, [x, 2.835, .16], [.038, .046, .034], [], 1, false);
-    }
-    // Three bookcases stocked with flat reams and cartons.
-    const shelfZ = -3.95;
-    for (const x of [-2.1, 0, 2.1]) {
-        for (const dx of [-.89, .89])
-            b.box(m.materials.metal, [x + dx, 1.5, shelfZ], [.035, 2.96, .52]);
-        b.box(m.materials.darkwood, [x, 1.48, -4.22], [1.82, 2.94, .04], [], .78);
-        for (let row = 0; row < 5; row++) {
-            const y = .2 + row * .6;
-            b.box(m.materials.wood, [x, y, shelfZ], [1.85, .055, .58], [], .9);
-            if (booth.category === 'packaging') {
-                for (let col = 0; col < 2; col++)
-                    carton(b, m, x - .45 + col * .87, y + .03, shelfZ, .73, .35 + r() * .1, .43);
-            }
-            else if (booth.category === 'creative') {
-                for (let col = 0; col < 4; col++)
-                    for (let layer = 0; layer < 2; layer++) {
-                        const colors = ['#c3a274', '#a56d59', '#829777', '#729396', '#6f7a91', '#b5a3ac', '#d6bf90', '#e3dcc5'];
-                        b.box(m.color(colors[(row * 3 + col + booth.slot) % colors.length]), [x - .66 + col * .44, y + .065 + layer * .08, shelfZ], [.4, .075, .46], [0, (r() - .5) * .02, 0], .8 + row * .025);
+    a.box(metal,[0,3.26,-1.59],[5.84,.051,.059],[],1,false,false);
+    a.box(m.lamp,[0,3.226,-1.59],[5.62,.022,.042],[],1,false,false);
+
+    for (const [bay,sx] of [-1.87,0,1.87].entries()) {
+        b.box(shade,[sx,1.55,-3.709],[1.72,2.63,.042],[],.88 + bay*.047);
+        for (const dx of [-.837,.837]) b.box(metal,[sx+dx,1.62,-3.46],[.043,2.95,.498],[],1);
+        for (let row=0;row<5;row++) {
+            const y = .33 + row*.529;
+            b.box(m.wood,[sx,y,-3.441],[1.747,.044,.542],[],.94,false);
+            b.box(cream,[sx,y+.015,-3.153],[1.70,.021,.026],[],.96,false,false);
+            for (let column=0;column<4;column++) {
+                const x = sx-.60+column*.396;
+                if (isPack) {
+                    const w = .31 + (column%2)*.024, dy = .38;
+                    b.box(m.kraft,[x,y+.15,-3.43],[w,.248,dy],[0,(rng()-.5)*.075,0],.9+.15*rng(),true);
+                    b.box(m.tape,[x,y+.278,-3.43],[.037,.008,.399],[],1,false,false);
+                    b.box(cream,[x+.005,y+.165,-3.229],[.116,.047,.003],[],.95,false,false);
+                } else if (swatches) {
+                    const paper = library.color(STOCK_COLORS[(booth.slot+row+column) % STOCK_COLORS.length]);
+                    for (let i=0;i<4+(column%2);i++) {
+                        b.box(paper,[x+(rng()-.5)*.023,y+.039+i*.035,-3.43], [.328,.03,.408],[0,(rng()-.5)*.061,0],.83+.043*i,false);
                     }
-            }
-            else {
-                for (let col = 0; col < 4; col++)
-                    for (let layer = 0; layer < 3; layer++)
-                        ream(b, m, x - .66 + col * .44, y + .065 + layer * .084, shelfZ, (r() - .5) * .025, false, .8 + row * .035);
+                    if (row>=3 && bay===booth.slot%3) {
+                        b.box(paper,[x,y+.225,-3.26],[.23,.28,.019],[-.16,0,.03],.93,true);
+                    }
+                } else {
+                    const paper = (row+column+bay)%3 === 0 ? m['warm-ream'] : m.ream;
+                    for (let i=0;i<3+(row%2);i++) {
+                        b.box(i%2 ? shade : m.edge,[x+(rng()-.5)*.018,y+.059+i*.064,-3.429],
+                            [.285,.053,.406],[0,(rng()-.5)*.055,0],.89+.07*rng(),false);
+                        b.add('plane',paper,[x,y+.087+i*.064,-3.429],[.285,.406,1],[-Math.PI/2,0],1,false);
+                    }
+                }
             }
         }
     }
-    b.finish();
-    const fallback=new T.Group();inventory.add(fallback);b=new Batch(fallback);
-    counter(b, m, booth.accent);
-    const ps = products.filter(p => p.boothId === booth.id);
-    if (booth.category === 'printing') {
-        paperPallet(b, m, -2.55, -2.5, '#e6dfc8', booth.slot);
-        paperPallet(b, m, 2.55, -2.65, '#f3edda', booth.slot + 1);
-        for (let i = 0; i < 4; i++)
-            ream(b, m, -.7, .99 + i * .072, -1.02, i * .025);
-        ream(b, m, -1.23, .97, -1.02, -.1);
-        swatch(b, m, .03, .95, -.95, booth.accent);
-    }
-    else if (booth.category === 'creative') {
-        for (let i = 0; i < 7; i++)
-            b.box(m.color(['#c9856d', '#dfbc7b', '#8da188', '#74939a', '#9b8aa5', '#d7c8ac', '#657b68'][i]), [-1.1, .956 + i * .012, -1.01], [.52, .01, .63], [0, i * .055, 0]);
-        swatch(b, m, -.2, .96, -.85, booth.accent);
-        paperPallet(b, m, 2.55, -2.4, '#bd9b73', booth.slot);
-        for (let i = 0; i < 6; i++) {
-            const mat = m.color(['#ae725d', '#ccac72', '#7c957e', '#657b91', '#9b8394', '#d2bf99'][i]);
-            b.box(mat, [-3.43, 1.2 + (i % 3) * .64, -1.75 - Math.floor(i / 3) * 1.06], [.015, .53, .75], [0, 0, .01]);
+    const px = -.71, pz = -1.065;
+    b.box(shade,[px,.478,pz],[2.95,.952,.86],[],1,true);
+    b.box(m.wood,[px,.985,pz],[3.1,.087,.955],[],1,true);
+    b.box(metal,[px,.092,pz+.425],[2.87,.135,.048],[],.85);
+    for (let i=0;i<18;i++) b.box(shade,[px-1.34+i*.155,.51,pz+.437],[.083,.65,.015],[],.86+(i%3)*.058,false,false);
+    b.box(metal,[.46,1.047,-1.01],[.22,.031,.18],[],.93,true);
+    b.box(library.color('#234143'),[.46,1.132,-1.09],[.25,.163,.024],[.29,0,0],.99,true);
+    b.box(m.edge,[.05,1.041,-1.17],[.28,.026,.41],[0,.17,0],.99,true);
+    b.add('cylinder',m.brass,[.13,1.066,-.99],[.004,.19,.004],[0,0,Math.PI/2],.9,false);
+    softContact(inventory,px,pz,3.73,1.53,.23);
+    softContact(inventory,0,-3.43,6.13,1.34,.19);
+
+    // An open-sided stock stand keeps the product mix visible from the main hall.
+    const standX=-2.83, standZ=-.49;
+    for (const dx of [-.285,.285]) a.box(metal,[standX+dx,.48,standZ],[.039,.96,.52],[],.85,true);
+    for (const h of [.16,.52,.89]) {
+        a.box(m.wood,[standX,h,standZ],[.648,.041,.55],[],.94,true);
+        if (isPack) carton(a,library,standX,h+.024,standZ,.43,.21,.38,h>.8);
+        else if (swatches) {
+            for (let k=0;k<5;k++) a.box(library.color(STOCK_COLORS[(booth.slot+k)%STOCK_COLORS.length]),
+                [standX+k*.009,h+.035+k*.028,standZ],[.50,.020,.42],[0,k*.064,0],.94,false);
+        } else {
+            for (let j=0;j<3;j++) ream(a,library,standX+j*.015,h+.058+j*.071,standZ,j*.043);
         }
     }
-    else if (booth.category === 'packaging') {
-        carton(b, m, -1.05, .96, -1.01, .56, .33, .46, true);
-        swatch(b, m, -.15, .95, -1.01, booth.accent);
-        for (let i = 0; i < 6; i++)
-            carton(b, m, -2.5 + (i % 2) * .7, .06 + Math.floor(i / 2) * .43, -2.3, .66, .42, .62);
-        pallet(b, m, 2.3, -2.6);
-        paperRoll(b, m, fallback, 2.2, -2.6, .4, 1.05);
-        paperRoll(b, m, fallback, 2.75, -3.15, .3, .9);
+
+    const slots: BoothCell['slots'] = [];
+    const add=(asset:AssetId, position:[number,number,number], rotation=0, scale=1) =>
+        slots.push({asset,position,rotation,scale});
+    if (isPack) {
+        carton(details,library,-1.54,1.028,-1.01,.44,.27,.43,true);
+        carton(details,library,-.76,1.028,-1.04,.41,.26,.36,false);
+        pallet(details,library,2.1,-2.94);
+        paperRoll(details,library,fallback,1.88,-2.75,.28,.78);
+        paperRoll(details,library,fallback,2.43,-3.01,.24,.62);
+        add('carton-open',[-1.54,1.028,-1.01],-.23,1.08);
+        add('carton-closed',[-.76,1.028,-1.10],.17,.88);
+        add('wood-pallet',[2.1,0,-2.94],0,.81);
+        add('kraft-roll',[1.87,.124,-2.77],.28,.83);
+        add('kraft-roll',[2.44,.124,-2.97],-.62,.64);
+    } else if (swatches) {
+        swatch(details,library,-1.31,1.035,-1.08,booth.accent);
+        add('swatch-fan',[-1.43,1.029,-1.07],-.29,1.96);
+        add('notebook',[-.56,1.031,-.98],.26,1.28);
+        for (let i=0;i<6;i++) b.box(library.color(STOCK_COLORS[(booth.slot+i)%STOCK_COLORS.length]),
+            [-.79+i*.144,1.039+i*.006,-1.26],[.27,.008,.33],[0,i*.17,0],.95);
+    } else {
+        for (let i=0;i<4;i++) {
+            ream(details,library,-1.42,1.065+i*.07,-1.04,i*.036);
+            add('paper-ream-modern',[-1.42,1.029+i*.053,-1.04],i*.036,1.14);
+        }
+        ream(details,library,-.73,1.065,-1.04,-.10);
+        add('paper-ream-open-modern',[-.72,1.029,-1.08],-.27,1.09);
+        add('notebook',[-.35,1.029,-1.03],.18,1.06);
     }
-    else {
-        paperPallet(b, m, 2.45, -2.6, '#e2dece', booth.slot);
-        paperPallet(b, m, -2.5, -2.6, '#c3b69d', booth.slot + 13);
-        for (let i = 0; i < 6; i++)
-            b.box(m.materials.edge, [-1, .96 + i * .02, -1.02], [.8, .017, .6], [0, i * .016, 0]);
-        swatch(b, m, -.1, .96, -1, booth.accent);
+    if (isBoard || booth.category==='printing') {
+        paperPallet(details,library,-2.1,-2.40,'#e4ded0',booth.slot);
+        add('wood-pallet',[-2.16,0,-2.35],.08,.79);
+        for (let i=0;i<3;i++) add('paper-bundle',[-2.16,.12+i*.149,-2.35],.082+i*.032,.8);
     }
-    b.finish();
-    b=new Batch(inventory);
-    // Merchant stool; a few small lived-in details, no uncanny placeholder people.
-    b.add('cylinder', m.materials.wood, [.4, .58, -2.13], [.24, .07, .24]);
-    for (const dx of [-.15, .15])
-        for (const dz of [-.15, .15])
-            b.box(m.materials.metal, [.4 + dx, .28, -2.13 + dz], [.026, .55, .026]);
-    b.box(m.materials.paper, [2.12, 2, -4.38], [.43, .6, .015], [], .93);
-    for (let i = 0; i < 5; i++)
-        b.box(accent, [2.12, 2.13 - i * .06, -4.36], [.3, .008, .005]);
-    // A brass pendant with a broad warm shade.
-    b.add('cylinder', m.materials.metal, [-.8, 3.31, -2.2], [.012, .75, .012]);
-    b.add('cylinder', m.materials.brass, [-.8, 2.88, -2.2], [.22, .11, .22]);
-    b.add('sphere', m.materials.lamp, [-.8, 2.83, -2.2], [.07, .08, .07], [], 1, false);
-    a.finish();
-    b.finish();
-    softContact(inventory, -.7, -1.02, 4.2, 1.7, .25);
-    softContact(inventory, 0, -3.9, 7.1, 1.9, .25);
+    a.finish(); b.finish(); details.finish();
+
     const targets: Target[] = [];
-    const proxy = (x: number, y: number, z: number, w: number, h: number, d: number, productId?: string) => {
-        const mesh = new T.Mesh(new T.BoxGeometry(w, h, d), new T.MeshBasicMaterial({ visible: false }));
-        mesh.position.set(x, y, z);
-        root.add(mesh);
-        mesh.userData = { boothId: booth.id, productId, ownedGeometry: true, ownedMaterial: true };
-        targets.push({ mesh, boothId: booth.id, productId });
+    const proxy = (coords: [number,number,number], dimensions: [number,number,number], productId?: string) => {
+        const box = new T.Mesh(new T.BoxGeometry(...dimensions), new T.MeshBasicMaterial({visible:false}));
+        box.position.set(...coords);
+        box.userData = {ownedGeometry:true,ownedMaterial:true};
+        root.add(box);
+        targets.push({mesh:box,boothId:booth.id,productId});
     };
-    proxy(0, 3.52, .14, 6.3, .8, .15);
-    ps.slice(0, 3).forEach((p, i) => proxy(-1.22 + i * .72, 1.08, -1.01, .64, .36, .9, p.id));
-    proxy(2.3, .7, -2.65, 1.25, 1.4, 1.4, ps[1]?.id);
+    proxy([0,3.32,.13],[5.93,.61,.19]);
+    const own = products.filter(p=>p.boothId===booth.id);
+    own.slice(0,3).forEach((product,i)=>proxy([-1.53+i*.63,1.14,-1.01],[.56,.33,.57],product.id));
+    if (own.length) proxy([standX,.56,standZ],[.65,1.12,.56],own[0].id);
+
     const colliders: Collider[] = [];
-    function collider(x: number, z: number, w: number, d: number, height = 3.7, occludes = true) {
-        const point = new T.Vector3(x, 0, z).applyAxisAngle(new T.Vector3(0, 1, 0), pose.rotation).add(root.position);
-        colliders.push({ minX: point.x - d / 2, maxX: point.x + d / 2, minZ: point.z - w / 2, maxZ: point.z + w / 2, height, occludes });
+    function collider(x:number,z:number,w:number,d:number,height:number,occludes=true) {
+        const c=Math.cos(pose.rotation),s=Math.sin(pose.rotation);
+        const xx=pose.x+x*c+z*s,zz=pose.z-x*s+z*c;
+        const hx=(Math.abs(c)*w+Math.abs(s)*d)*.5,hz=(Math.abs(s)*w+Math.abs(c)*d)*.5;
+        colliders.push({minX:xx-hx,maxX:xx+hx,minZ:zz-hz,maxZ:zz+hz,height,occludes});
     }
-    collider(0, -4.5, 7.3, .28);
-    collider(-3.56, -2.70, .3, 3.6);
-    collider(3.56, -2.70, .3, 3.6);
-    collider(standX, standZ, .73, .55, 1.12, false);
-    collider(-.7, -1.02, 3.65, .98, .94, false);
-    collider(0, -3.96, 6.5, .7, 3, false);
-    collider(-2.5, -2.6, 1.2, 1.3, 1.2, false);
-    collider(2.5, -2.6, 1.3, 1.4, 1.3, false);
-    const authored=new T.Group();authored.visible=false;inventory.add(authored);
-    const slots:BoothCell['slots']=[{asset:'merchant-counter',position:[-.7,0,-1.02]},{asset:'notebook',position:[.55,.935,-1.1],rotation:.18,scale:1.2}];
-    const add=(asset:AssetId,position:[number,number,number],rotation=0,scale=1)=>slots.push({asset,position,rotation,scale});
-    if(booth.category==='packaging'){
-        add('carton-open',[-1.05,.935,-1.02],.08,1.2);add('swatch-fan',[.05,.935,-1.08],-.2,1.7);
-        for(let i=0;i<6;i++)add('carton-closed',[-2.65+(i%2)*.65,.02+Math.floor(i/2)*.34,-2.6],i*.025,1.2);
-        add('wood-pallet',[2.3,0,-2.6]);add('kraft-roll',[2.15,.153,-2.55]);add('kraft-roll',[2.8,.153,-2.85],0,.72);
-    }else{
-        for(const x of [-2.5,2.5]){const z=x>0?-3.1:-2.65;add('wood-pallet',[x,0,z]);for(let i=0;i<3;i++)add('paper-bundle',[x,.153+i*.185,z],i*.008);}
-        if(booth.category==='creative'){add('swatch-fan',[-.8,.935,-1.02],-.2,2.4);add('swatch-fan',[.12,.935,-1.08],.3,1.8);}
-        else{for(let i=0;i<4;i++)add('paper-ream',[-1.15,.935+i*.056,-1.02],i*.025);add('paper-ream-open',[-.75,.935,-1.02],-.27,1.08);add('swatch-fan',[.1,.935,-1.03],0,1.7);}
+    collider(0,-3.96,6.15,.16,3.52);
+    collider(0,-3.45,5.66,.61,2.98,false);
+    for (const x of [-3.01,3.01]) {
+        collider(x,-.055,.13,.26,3.09);
+        collider(x,-3.31,.155,1.29,3.28);
     }
-    return { root, inventory, booth, targets, colliders,authored,fallback,slots };
+    collider(px,pz,3.10,.955,1.033,false);
+    collider(standX,standZ,.65,.56,1.1,false);
+    if (isPack) collider(2.13,-2.85,1.10,.93,1.12,false);
+    if (isBoard||booth.category==='printing') collider(-2.16,-2.35,1.01,.82,.74,false);
+    return {root,inventory,booth,targets,colliders,authored,fallback,slots};
 }
 export function disposeCell(cell: BoothCell): void {
     cell.root.traverse(o => {

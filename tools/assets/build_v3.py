@@ -19,7 +19,9 @@ parser.add_argument('--frames', nargs='*', default=['market', 'workshop', 'ream'
 parser.add_argument('--samples', type=int, default=52)
 parser.add_argument('--scale', type=int, default=100)
 parser.add_argument('--no-export', action='store_true')
-args = parser.parse_args(sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else [])
+args = parser.parse_args(
+    sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+) if __name__ == '__main__' else parser.parse_args(['--frames', '--no-export'])
 
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)

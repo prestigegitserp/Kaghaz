@@ -52,9 +52,9 @@ test('catalog ids are unique and each item belongs to a visible booth with an ex
         assert.ok(p.minOrder > 0);
     }
 });
-test('metric booth placement leaves a central aisle and fixed eight metre bay pitch', () => {
-    assert.equal(boothPose(0).x, -2.85);
-    assert.equal(boothPose(1).x, 2.85);
-    assert.equal(boothPose(0).z - boothPose(2).z, 8);
-    assert.equal(boothPose(8).z, -22);
+test('metric booth placement distributes ten spaces along different sides of the hall', () => {
+    assert.equal(boothPose(0).x, 8.55);
+    assert.equal(boothPose(1).x, -8.55);
+    assert.equal(boothPose(4).rotation, 0);
+    assert.equal(boothPose(9).z, 9.9);
 });

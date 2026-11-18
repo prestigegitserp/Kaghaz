@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { planCut } from '../src/domain/cut.ts';
-import { ASSET_REGISTRY, assetForProduct, type AssetId } from '../src/scene/asset-registry.ts';
+import { ASSET_REGISTRY, type AssetId } from '../src/scene/asset-registry.ts';
 import { MATERIAL_PLATES, REVIEW_VIEWS } from '../src/domain/review.ts';
 
 const stock = { stockWidth: 700, stockHeight: 1000, pieceWidth: 210, pieceHeight: 280,
@@ -56,7 +56,7 @@ test('new assets are self-contained, size-budgeted and include the published Cyc
             assert.ok(Number.isInteger(image.bufferView) && !image.uri);
             assert.equal(image.mimeType, 'image/webp');
         }
-        if (asset.id === assetForProduct('ream')) {
+        if (asset.id === 'paper-ream-open') {
             for (const part of ['wrapper', 'sheets', 'loose-sheets']) {
                 assert.ok(gltf.nodes.some((n: { extras?: { part?: string } }) => n.extras?.part === part));
             }

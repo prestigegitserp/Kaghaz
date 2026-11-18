@@ -1,101 +1,141 @@
 import * as T from 'three';
-import { Batch, GEOMETRY, softContact } from './batch.ts';
-import { MaterialLibrary } from './materials.ts';
-export function createArchitecture(m: MaterialLibrary): T.Group {
-    const root = new T.Group();
-    root.name = 'baharestan-arcade';
-    const b = new Batch(root);
-    const floor = new T.Mesh(new T.PlaneGeometry(17, 52), m.materials.floor);
-    const uvFloor = floor.geometry.attributes.uv;
-    for (let i = 0; i < uvFloor.count; i++) uvFloor.setXY(i, uvFloor.getX(i) * (17 / 2.05), uvFloor.getY(i) * (52 / 2.05));
+import { HALL, STATION_IDS } from '../domain/hall.ts';
+import { Batch, softContact } from './batch.ts';
+import { seeded, type MaterialLibrary } from './materials.ts';
+
+export const STOCK_COLORS = ['#32796e', '#ce6956', '#dfaf5f', '#6777a4', '#8d9e71', '#a7768d', '#e8ddc0'];
+
+export function createArchitecture(library: MaterialLibrary): T.Group {
+    const root = new T.Group(), b = new Batch(root), m = library.materials;
+    root.name = 'baharestan-showroom';
+    const floorGeometry = new T.PlaneGeometry(HALL.width, HALL.depth);
+    const uv = floorGeometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * HALL.width / 2.2, uv.getY(i) * HALL.depth / 2.2);
+    const floor = new T.Mesh(floorGeometry, m.floor);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, -.014, -5);
+    floor.position.y = -.016;
     floor.receiveShadow = true;
     root.add(floor);
-    // Limestone kerbs lead the eye along the circulation route, not a huge empty hall.
-    for (const x of [-2.67, 2.67]) {
-        b.box(m.materials.plaster, [x, .008, -5], [.16, .03, 51], [], .79, false, false);
-        b.box(m.materials.brass, [x * .96, .006, -5], [.014, .008, 51], [], .7, false, false);
-    }
-    for (const x of [-7.55, 7.55])
-        b.box(m.materials.plaster, [x, 2, -5], [.2, 4.1, 52]);
-    // Segmented vaults leave small skylight gaps; inner faces have continuous brick UVs.
-    const span = 2.91, rise = 1.9, spring = 3.34;
-    for (let bay = 0; bay < 7; bay++) {
-        const z = 16 - bay * 8;
-        const vertices: number[] = [], uv: number[] = [], indices: number[] = [];
-        for (let iz = 0; iz <= 1; iz++)
-            for (let j = 0; j <= 40; j++) {
-                const angle = j / 40 * Math.PI;
-                vertices.push(Math.cos(angle) * span, spring + Math.sin(angle) * rise, z - iz * 7.4);
-                uv.push(j / 40 * 5.4, iz * 7.4 / 1.42);
-            }
-        for (let j = 0; j < 40; j++) {
-            const a = j, bb = j + 1, c = j + 41, d = j + 42;
-            indices.push(a, c, bb, bb, c, d);
+
+    const steel = library.color('#435b60', .47), ivory = library.color('#e6e0d1', .63);
+    const brass = library.color('#b28b58', .46), city = library.color('#babead', .91);
+    const glass = library.add('hallglass', {
+        color: '#c4e6e9', transparent: true, opacity: .12, side: T.DoubleSide, roughness: .23,
+        metalness: .07, depthWrite: false,
+    });
+    for (const side of [-1, 1]) {
+        b.box(m.plaster, [side * 10.48, 7.21, 0], [8.7, .26, 29.3], [], 1, false, false);
+        b.box(steel, [side * 6.12, 6.90, 0], [.21, .23, 28.8], [], 1, false, false);
+        b.box(m.lamp, [side * 6.12, 6.766, 0], [.084, .025, 28.1], [], 1, false, false);
+        b.box(m.plaster, [side * 14.62, .65, 0], [.18, 1.3, 29.4]);
+        b.box(ivory, [side * 14.55, 1.32, 0], [.27, .075, 29.2]);
+        for (const y of [1.36, 4.38, 6.98]) b.box(steel, [side * 14.60, y, 0], [.091, .092, 29.3], [], 1, false, false);
+        for (let z = -13.78; z < 14.5; z += 3.42) {
+            b.box(steel, [side * 14.60, 4.19, z], [.091, 5.69, .092], [], 1, false, false);
+            b.add('plane', glass, [side * 14.58, 4.19, z + 1.69], [3.39, 5.60, 1], [0, Math.PI / 2], 1, false);
         }
-        const geo = new T.BufferGeometry();
-        geo.setAttribute('position', new T.Float32BufferAttribute(vertices, 3));
-        geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2));
-        geo.setIndex(indices);
-        geo.computeVertexNormals();
-        const mat = m.materials.brick;
-        mat.side = T.DoubleSide;
-        const vault = new T.Mesh(geo, mat);
-        vault.receiveShadow = true;
-        root.add(vault);
-        for (const xx of [-3.03, 3.03]) {
-            b.box(m.materials.brick, [xx, 1.67, z], [.48, 3.34, .55]);
-            b.box(m.materials.plaster, [xx, .17, z], [.6, .34, .66], [], .79);
-            b.box(m.materials.plaster, [xx, 3.26, z], [.6, .16, .68], [], .9);
+        for (let index = 0; index < 4; index++) {
+            const x = side * (20.2 + index * 1.13), z = -15.47 + index * 11.12, height = 8.1 + (index % 3) * 1.7;
+            b.box(index % 2 ? ivory : city, [x, height / 2, z], [8.8, height, 8.45], [], .79 + index * .047, false, false);
+            for (let level = 2.15; level < height - .7; level += 2.12)
+                for (let w = -2.85; w < 4; w += 1.88)
+                    b.box(steel, [x - side * 4.415, level, z + w], [.04, 1.22, 1.27], [], .76 + level * .017, false, false);
         }
-        // Voussoirs on the arch are individual instances, with varied stone coloration.
-        for (let j = 0; j < 43; j++) {
-            const angle = (j + .5) / 43 * Math.PI;
-            const x = Math.cos(angle) * span, y = spring + Math.sin(angle) * rise;
-            const rotation = Math.atan2(rise * Math.cos(angle), -span * Math.sin(angle));
-            b.box(m.materials.plaster, [x, y, z + .05], [.19, .23, .62], [0, 0, rotation], .84 + (j % 5) * .025);
-        }
-        // Brass reflectors give the practical lights a visible source.
-        b.add('cylinder', m.materials.metal, [0, 4.57, z - 3.5], [.012, .55, .012]);
-        b.add('cylinder', m.materials.brass, [0, 4.23, z - 3.5], [.34, .095, .34]);
-        b.add('cylinder', m.materials.metal, [0, 4.31, z - 3.5], [.081, .11, .081]);
-        b.add('sphere', m.materials.lamp, [0, 4.12, z - 3.5], [.085, .107, .085], [], 1, false);
-        for (const xx of [-2.8, 2.8])
-            b.box(m.materials.darkwood, [xx, 3.85, z - 3.7], [.07, .1, 7.5], [], .8);
     }
-    // High roof lanterns and framing at the small daylight slots.
-    for (const z of [8.4, .4, -7.6, -15.6, -23.6]) {
-        b.box(m.materials.lamp, [0, 5.36, z], [2.6, .025, .43], [], .65, false, false);
-        for (const x of [-1.35, 0, 1.35])
-            b.box(m.materials.metal, [x, 5.32, z], [.045, .05, .49], [], .8, false, false);
-    }
-    // Far end: a framed service door and wayfinding, rather than a dead blank wall.
-    b.box(m.materials.brick, [0, 2.6, -30.7], [15.3, 5.2, .22]);
-    b.box(m.materials.darkwood, [0, 1.55, -30.52], [2.1, 3.1, .12], [], .8);
-    for (const x of [-.5, .5]) {
-        b.box(m.materials.wood, [x, 1.58, -30.43], [.92, 2.84, .06]);
-        for (let y = .4; y < 3; y += .34)
-            b.box(m.materials.brass, [x, y, -30.38], [.8, .012, .015], [], .7);
-    }
-    const sign = new T.Mesh(new T.PlaneGeometry(3.4, .85), m.sign('راستهٔ کاغذ', 'بهارستان · تهران', '#3f5645'));
-    sign.position.set(0, 3.74, -30.5);
+    for (const z of [-12, -8, -4, 0, 4, 8, 12])
+        b.box(ivory, [0, 7.02, z], [29.0, .22, .16], [], 1, false, false);
+    for (const x of [-4.1, -2.07, 0, 2.07, 4.1])
+        b.box(steel, [x, 7.29, 0], [.104, .16, 29.2], [], 1, false, false);
+
+    b.box(m.plaster, [0, 3.58, -13.73], [29.9, 7.2, .24]);
+    b.box(library.color('#30776d'), [0, 5.31, -13.54], [14.8, 1.49, .15], [], 1, true);
+    const sign = new T.Mesh(new T.PlaneGeometry(11.01, 1.26),
+        library.sign('بازار کاغذ بهارستان', 'تهران · خیابان ظهیرالاسلام', '#285d55'));
+    sign.position.set(0, 5.31, -13.437);
     root.add(sign);
-    // Entry wall hides the outside without obstructing the aisle perspective.
-    for (const x of [-5.5, 5.5])
-        b.box(m.materials.brick, [x, 2.2, 19.4], [5, 4.4, .3]);
-    // Delivery cart parked outside the walk lane.
-    const cartX = -2, cartZ = 16.8;
-    b.box(m.materials.wood, [cartX, .23, cartZ], [.8, .08, 1.3]);
-    for (const dx of [-.42, .42])
-        for (const dz of [-.42, .42])
-            b.add('cylinder', m.materials.rubber, [cartX + dx, .12, cartZ + dz], [.11, .065, .11], [0, 0, Math.PI / 2]);
-    for (const dx of [-.34, .34])
-        b.box(m.materials.metal, [cartX + dx, .62, cartZ - .62], [.03, .82, .03]);
-    b.box(m.materials.metal, [cartX, 1.03, cartZ - .62], [.71, .03, .03]);
-    for (let i = 0; i < 5; i++)
-        b.box(m.materials.edge, [cartX, .34 + i * .09, cartZ], [.69, .085, .91], [0, i * .01, 0], .85 + i * .02);
-    softContact(root, cartX, cartZ, 1.5, 2, .25);
+    for (const x of [-12.53, 12.53])
+        for (const z of [-12.68, 13.45])
+            b.box(ivory, [x, 3.55, z], [.29, 7.11, .36], [], .9, true);
+    for (const x of [-10.4, 10.4]) {
+        b.box(steel, [x, 6.86, 14.54], [8.4, .24, .14], [], 1, false, false);
+        for (const dx of [-4, -2, 0, 2, 4]) b.box(steel, [x + dx, 3.35, 14.54], [.083, 6.74, .086], [], 1, false, false);
+    }
+
+    for (const x of [-6.14, 6.14]) {
+        b.box(brass, [x, .002, .02], [.024, .008, 24.34], [], .92, false, false);
+        for (const z of [8.87, -6.22]) {
+            b.box(m.wood, [x, .47, z], [1.89, .106, .51], [], .96, true);
+            for (const dx of [-.71, .71]) b.box(steel, [x + dx, .22, z], [.086, .44, .44], [], .88, true);
+            softContact(root, x, z, 2.06, .79, .16);
+        }
+    }
+
+    for (let i=0;i<15;i++) {
+        const x=(i-7)*.377,z=-3.32-.29*Math.sin(i*.62),y=4.54+.26*Math.cos(i*.56);
+        const mesh=new T.PlaneGeometry(.296,1.66,3,15);
+        const pos=mesh.attributes.position;
+        for(let j=0;j<pos.count;j++) {
+            const u=pos.getX(j)/.296,v=pos.getY(j)/1.66;
+            pos.setXYZ(j,pos.getX(j),.22*Math.sin(v*3.9+i*.29)+.12*u*v,-pos.getY(j));
+        }
+        mesh.computeVertexNormals();
+        const material=library.add(`art-${i}`,{color:STOCK_COLORS[i%STOCK_COLORS.length],side:T.DoubleSide,roughness:.83});
+        const strip=new T.Mesh(mesh,material);
+        strip.position.set(x,y,z);
+        strip.castShadow=true;
+        root.add(strip);
+        b.box(steel,[x,(y+6.94)*.5,z+.64],[.010,6.94-y,.010],[],.95,false,false);
+    }
+    b.box(steel,[0,6.94,-3.31],[5.9,.054,.061],[],1,false,false);
+
+    const soil=library.color('#474e3a',1), leafMaterials=['#476754','#60805a','#7e9368'].map(c=>library.color(c,.56));
+    for(const [x,z,seed] of [[-6.62,8.36,9],[6.65,8.36,22],[-5.78,-5.62,25],[5.82,-5.62,34]]) {
+        const random=seeded(seed);
+        b.box(ivory,[x,.27,z],[.84,.55,.67],[],1,true);
+        b.box(soil,[x,.552,z],[.74,.022,.58],[],.95,true);
+        for(let branch=0;branch<5;branch++){
+            const dx=(random()-.5)*.77,dz=(random()-.5)*.63,h=1.17+random()*.76;
+            b.box(m.wood,[x+dx*.5,.55+h*.5,z+dz*.5],[.025,h,.025],[dz/h,0,-dx/h],.89,false);
+            for(let k=0;k<9;k++){
+                const t=.22+k*.086,a=random()*Math.PI*2;
+                const lx=x+dx*t+Math.cos(a)*.13,lz=z+dz*t+Math.sin(a)*.13;
+                b.add('sphere',leafMaterials[k%3],[lx,.55+h*t,lz],[.274,.032,.103],[-.28,-a,.31],.84+random()*.18,false);
+            }
+        }
+        softContact(root,x,z,1.23,.99,.17);
+    }
+    for (const id of STATION_IDS) {
+        const station = HALL.stations[id], [x,z] = station.position, [w,d] = station.size;
+        const accent = library.color(station.accent, .59);
+        b.box(accent, [x, .484, z], [w-.14, .97, d-.12], [], 1, true);
+        b.box(m.wood, [x, 1.014, z], [w, .09, d], [], 1, true);
+        b.box(steel, [x, .087, z], [w-.18, .14, d-.15], [], .72, true);
+        const legend = new T.Mesh(new T.PlaneGeometry(w * .67, .34),
+            library.sign(station.label, id === 'samples' ? 'تحریر، گلاسه و کرافت' : id === 'fold' ? 'الگو و خط تا' : 'نور و روکش', station.accent));
+        legend.position.set(x, .69, z + d / 2 - .013);
+        root.add(legend);
+        const n = id === 'samples' ? 11 : 6;
+        for (let i=0;i<n;i++) {
+            const dx = (i - (n-1)/2) * (id === 'samples' ? .348 : .338);
+            const color = library.color(STOCK_COLORS[(i + (id === 'proof' ? 1 : 0)) % STOCK_COLORS.length]);
+            if (id === 'samples') {
+                for (let k=0;k<4;k++) b.box(color, [x+dx + k*.009, 1.074+k*.017, z+.22-k*.112], [.29,.014,.45], [0,i*.056+k*.038,0], .93, k===3);
+                b.box(color, [x+dx,1.325,z-.49],[.28,.51,.021],[-.14,0,0],.95,true);
+            } else if (id==='fold' && i%2===0) {
+                b.box(m.kraft,[x+dx,1.182,z-.34],[.30,.229,.32],[0,.12*i,0],.94,true);
+                b.box(m.tape,[x+dx,1.299,z-.34],[.038,.008,.30],[0,.12*i,0],.86,false,false);
+            } else {
+                b.box(color,[x+dx,1.071,z+.19],[.28,.013,.47],[0,.07*(i-3),0],.9,true);
+                b.box(ivory,[x+dx,1.079,z+.23],[.19,.010,.27],[0,.07*(i-3),0],.96,false,false);
+            }
+        }
+        if (id === 'proof') {
+            for (const dx of [-.81,.81]) b.box(steel,[x+dx,1.429,z-.43],[.035,.75,.038],[],1,true);
+            b.box(steel,[x,1.826,z-.43],[1.674,.104,.116],[],1,true);
+            b.box(m.lamp,[x,1.756,z-.43],[1.54,.023,.083],[],1,false,false);
+        }
+        softContact(root,x,z,w+.36,d+.24,.21);
+    }
     b.finish();
     return root;
 }

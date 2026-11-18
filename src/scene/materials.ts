@@ -11,16 +11,15 @@ function canvasTexture(size: number, draw: (ctx: CanvasRenderingContext2D) => vo
     t.wrapS = t.wrapT = T.RepeatWrapping;
     return t;
 }
-export function textTexture(title: string, subtitle: string, color = '#3d5748', background = '#f2ecdd'): T.CanvasTexture {
+export function textTexture(title: string, subtitle: string, color = '#3d5748', background = '#f2eddf'): T.CanvasTexture {
     const c = document.createElement('canvas');
     c.width = 1024;
     c.height = 256;
     const ctx = c.getContext('2d')!;
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, 1024, 256);
-    ctx.strokeStyle = '#b9a47d';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(14, 14, 996, 228);
+    ctx.fillStyle = color;
+    ctx.fillRect(34, 40, 12, 176);
     ctx.direction = 'rtl';
     ctx.textAlign = 'center';
     ctx.fillStyle = color;
@@ -160,7 +159,7 @@ export class MaterialLibrary {
         this.add('lamp', { color: '#fff3ce', emissive: '#ffe7b4', emissiveIntensity: 1.7, roughness: .8 });
         this.add('glass', { color: '#dce4d7', roughness: .22, metalness: .12, transparent: true, opacity: .14, depthWrite: false });
         const loader = new T.TextureLoader();
-        const scanTiles = { brick: [1.42, 1.42], plaster: [1.78, 1.78], wood: [1.22, 1.22], floor: [2.05, 2.05] };
+        const scanTiles = { plaster: [1.5, 1.5], wood: [.78, .78], floor: [2.2, 2.2] };
         const load = (path: string, srgb: boolean, apply: (texture: T.Texture) => void) => {
             loader.load(`${import.meta.env.BASE_URL}${path}`, texture => {
                 texture.colorSpace = srgb ? T.SRGBColorSpace : T.NoColorSpace;
@@ -174,18 +173,18 @@ export class MaterialLibrary {
         for (const [key, tile] of Object.entries(scanTiles)) {
             const material = this.materials[key];
             material.userData.metricUV = tile;
-            load(`v3/materials/${key}-color.webp`, true, texture => {
+            load(`v4/materials/${key}-color.webp`, true, texture => {
                 material.color.set('#ffffff');
                 material.map = texture;
                 material.bumpMap = null;
                 material.needsUpdate = true;
             });
-            load(`v3/materials/${key}-normal.webp`, false, texture => {
+            load(`v4/materials/${key}-normal.webp`, false, texture => {
                 material.normalMap = texture;
-                material.normalScale.setScalar(key === 'brick' ? .7 : .46);
+                material.normalScale.setScalar(key === 'wood' ? .47 : .28);
                 material.needsUpdate = true;
             });
-            load(`v3/materials/${key}-arm.webp`, false, texture => {
+            load(`v4/materials/${key}-arm.webp`, false, texture => {
                 material.roughness = 1;
                 material.roughnessMap = material.aoMap = texture;
                 material.aoMapIntensity = .7;
@@ -200,9 +199,14 @@ export class MaterialLibrary {
                 material.needsUpdate = true;
             });
         }
-        load('v3/materials/press-wrapper.webp', true, texture => {
+        load('v4/materials/wrapper.webp', true, texture => {
             this.materials.ream.map = texture;
             this.materials.ream.needsUpdate = true;
+        });
+        const alternateWrapper = this.add('warm-ream', { map: label, roughness: .62 });
+        load('v4/materials/wrapper-warm.webp', true, texture => {
+            alternateWrapper.map = texture;
+            alternateWrapper.needsUpdate = true;
         });
         load('v2/materials/paper-edge.webp', true, texture => {
             this.materials.edge.map = texture;

@@ -28,14 +28,6 @@ export const MATERIAL_NOTES: Record<ProductKind, string> = {
     notebook: 'در نمای لبه به عطف، جلد و بلوک ورق‌ها نگاه کنید.',
 };
 
-export const SHOTS = [
-    { id: 'entry', label: 'ورودی', camera: [.48, 1.79, 17.2], target: [-.48, 1.88, 2.8], fov: 56 },
-    { id: 'vault', label: 'طاق و نورگیر', camera: [.31, 1.78, 10.65], target: [-.25, 4.72, -5.3], fov: 52 },
-    { id: 'counter', label: 'پیشخوان تحریر', camera: [-1.56, 1.61, 11.25], target: [-4.27, 1.15, 10.35], fov: 40 },
-    { id: 'stock', label: 'انبار بسته‌بندی', camera: [1.52, 1.66, 2.67], target: [5.59, .95, 2.76], fov: 43 },
-] as const;
-export type ShotId = typeof SHOTS[number]['id'];
-
 export const INSPECTION_VIEWS = [
     { id: 'whole', label: 'نمای کلی' },
     { id: 'edge', label: 'لبه و مقطع' },

@@ -1,3 +1,5 @@
+import { boothCoordinates } from './hall.ts';
+
 export type ProductKind = 'ream' | 'sheet' | 'kraft' | 'box' | 'swatch' | 'roll' | 'notebook';
 export type Category = 'all' | 'printing' | 'board' | 'packaging' | 'creative';
 export type Quality = 'auto' | 'high' | 'balanced' | 'low';
@@ -39,7 +41,7 @@ export interface SavedState {
     customProducts: Product[];
     quality: Quality;
 }
-export const STORAGE_KEY = 'kaghaz.workspace.v3';
+export const STORAGE_KEY = 'kaghaz.workspace.v4';
 export const CATEGORIES: {
     id: Category;
     label: string;
@@ -76,14 +78,7 @@ export function quantity(value: unknown, minimum = 1): number {
 export function escapeHtml(value: unknown): string {
     return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 }
-export function boothPose(slot: number): {
-    x: number;
-    z: number;
-    rotation: number;
-} {
-    const side = slot % 2 === 0 ? -1 : 1;
-    return { x: side * 2.85, z: 10 - Math.floor(slot / 2) * 8, rotation: side === -1 ? Math.PI / 2 : -Math.PI / 2 };
-}
+export const boothPose = boothCoordinates;
 export function emptyState(): SavedState {
     return { version: 1, favorites: [], inquiry: [], notes: '', customBooths: [], customProducts: [], quality: 'auto' };
 }

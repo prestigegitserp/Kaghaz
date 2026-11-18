@@ -1,0 +1,49 @@
+{
+  "version": 4,
+  "assets": [
+    {
+      "id": "paper-ream-modern",
+      "file": "models/paper-ream-modern.glb",
+      "units": "meters",
+      "bytes": 47916,
+      "sourceBytes": 133076,
+      "triangles": 228,
+      "sha256": "fc43d9f6d05075893945e77e7354dbf5f9933dce96628846ed1ded8c10b36db6"
+    },
+    {
+      "id": "paper-ream-open-modern",
+      "file": "models/paper-ream-open-modern.glb",
+      "units": "meters",
+      "bytes": 382180,
+      "sourceBytes": 1943652,
+      "triangles": 10236,
+      "sha256": "4a0c7d5079fc0a6f712beaea79572f1aa2a3f64a6460efc8c6b49930dedbe452"
+    }
+  ],
+  "renders": [
+    {
+      "file": "renders/hall.webp",
+      "width": 1536,
+      "height": 960,
+      "bytes": 122780
+    },
+    {
+      "file": "renders/sample-table.webp",
+      "width": 1376,
+      "height": 900,
+      "bytes": 113400
+    },
+    {
+      "file": "renders/fold-counter.webp",
+      "width": 1344,
+      "height": 880,
+      "bytes": 112454
+    },
+    {
+      "file": "renders/ream.webp",
+      "width": 1280,
+      "height": 864,
+      "bytes": 42656
+    }
+  ]
+}

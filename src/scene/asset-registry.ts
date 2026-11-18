@@ -14,7 +14,8 @@ const updated = {
     'carton-open': 'کارتن با لبهٔ موج‌دار و خط تا',
     'kraft-roll': 'رول کرافت با پیچش کاغذ و هستهٔ توخالی',
 };
-export type AssetId = keyof typeof legacy | keyof typeof updated;
+const current = { 'paper-ream-modern': 'لفاف تحریر بهارستان', 'paper-ream-open-modern': 'بند نیمه‌باز بهارستان' };
+export type AssetId = keyof typeof legacy | keyof typeof updated | keyof typeof current;
 export interface AssetDefinition {
     id: AssetId;
     url: string;
@@ -24,24 +25,24 @@ export interface AssetDefinition {
     maxTriangles: number;
 }
 export const ASSET_REGISTRY = Object.fromEntries(
-    Object.entries({ ...legacy, ...updated }).map(([id, label]) => [id, {
-        id, label, url: `${Object.hasOwn(updated, id) ? 'v3' : 'v2'}/models/${id}.glb`,
+    Object.entries({ ...legacy, ...updated, ...current }).map(([id, label]) => [id, {
+        id, label, url: `${Object.hasOwn(current,id) ? 'v4' : Object.hasOwn(updated,id) ? 'v3' : 'v2'}/models/${id}.glb`,
         units: 'meters', maxBytes: 2 * 1024 * 1024, maxTriangles: 60_000,
     }]),
 ) as Record<AssetId, AssetDefinition>;
 
 export function assetForProduct(kind: ProductKind): AssetId {
     return ({
-        ream: 'paper-ream-open', sheet: 'paper-bundle', kraft: 'paper-bundle',
+        ream: 'paper-ream-open-modern', sheet: 'paper-bundle', kraft: 'paper-bundle',
         box: 'carton-open', roll: 'kraft-roll', swatch: 'swatch-fan', notebook: 'notebook',
     } as const)[kind];
 }
 
 export const LIGHTING = [
-    { id: 'day', label: 'نور ورودی', key: '#ffe7c6', fill: '#c6dce8', exposure: 1.18,
-      intensity: 2.95, ambient: .96, practical: 47, environment: .38 },
-    { id: 'warm', label: 'غروب', key: '#ffb570', fill: '#a6bad7', exposure: 1.23,
-      intensity: 1.95, ambient: .65, practical: 59, environment: .31 },
-    { id: 'night', label: 'چراغ‌های راسته', key: '#9ab9d8', fill: '#a1b5cb', exposure: 1.30,
-      intensity: .72, ambient: .38, practical: 86, environment: .24 },
+    { id: 'day', label: 'نور روز', key: '#fff1d9', fill: '#dae9ff', exposure: 1.18,
+      intensity: 2.7, ambient: 1.84, practical: 19, environment: .54 },
+    { id: 'warm', label: 'نور گرم', key: '#ffd9a9', fill: '#dee8ff', exposure: 1.19,
+      intensity: 1.78, ambient: 1.59, practical: 37, environment: .48 },
+    { id: 'night', label: 'نور ویترین', key: '#bccfe8', fill: '#e2e6ff', exposure: 1.24,
+      intensity: 1.11, ambient: 1.26, practical: 61, environment: .44 },
 ] as const;
