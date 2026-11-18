@@ -1,6 +1,6 @@
-> **نسخه‌های بازار:** [نسخهٔ سوم و میز بررسی جنس](https://prestigegitserp.github.io/Kaghaz/v3/) · [نسخهٔ دوم](https://prestigegitserp.github.io/Kaghaz/v2/) · [نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/v1/) · [آدرس اصلی](https://prestigegitserp.github.io/Kaghaz/)
+> **نسخه‌های بازار:** [نسخهٔ چهارم، سالن مدرن بهارستان](https://prestigegitserp.github.io/Kaghaz/v4/) · [نسخهٔ سوم](https://prestigegitserp.github.io/Kaghaz/v3/) · [نسخهٔ دوم](https://prestigegitserp.github.io/Kaghaz/v2/) · [نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/v1/)
 >
-> گردش‌کار Pages روی `main` هر سه نسخه را از شاخه‌های خودشان در یک خروجی منتشر می‌کند. آدرس اصلی از commit ثابت نسخهٔ اول `25dc79f755cdd5f71b324f3f1705c67097421453` ساخته می‌شود.
+> GitHub Pages چهار شاخهٔ نسخه را در یک خروجی منتشر می‌کند. [آدرس اصلی](https://prestigegitserp.github.io/Kaghaz/) از commit ثابت نسخهٔ اول ساخته می‌شود.
 
 # کاغذ — نسخهٔ اول راستهٔ تعاملی
 
