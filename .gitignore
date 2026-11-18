@@ -11,3 +11,5 @@ public/assets/Vazirmatn-OFL.txt
 public/v2/renders/*.png
 
 /qa/
+
+__pycache__/

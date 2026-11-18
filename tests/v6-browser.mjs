@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import { chromium, devices } from 'playwright';
 
-const base = '/Kaghaz/v5/';
+const base = '/Kaghaz/v6/';
 const dist = resolve('dist');
 const types = { html: 'text/html', js: 'text/javascript', css: 'text/css', webp: 'image/webp',
     svg: 'image/svg+xml', glb: 'model/gltf-binary', woff2: 'font/woff2', txt: 'text/plain' };
@@ -32,14 +32,18 @@ try {
     await mkdir(output, { recursive: true });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const url = process.env.KAGHAZ_QA_URL || `http://127.0.0.1:${server.address().port}${base}`;
-    browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+    browser = await chromium.launch({
+        executablePath: process.env.KAGHAZ_CHROMIUM || undefined,
+        args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    });
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
     context.setDefaultTimeout(60_000);
     const live = await context.newPage();
-    const errors = [], missing = [];
+    const errors = [], missing = [], loaded = new Set();
     live.on('pageerror', error => errors.push(error.message));
-    live.on('response', response => { if (response.status() >= 400) missing.push(response.url()); });
+    live.on('response', response => { if (response.status() >= 400) missing.push(response.url()); else if (response.ok()) loaded.add(response.url()); });
     const waitForModel = live.waitForResponse(response => response.url().endsWith('/loaded-paper-cart.glb') && response.ok(),{timeout:60_000});
+    await live.addInitScript(() => localStorage.setItem('kaghaz.workspace.v5', 'version-five-kept'));
     await live.goto(url);
     const scene=live.locator('#scene');
     const canvas=scene.locator('canvas');
@@ -63,7 +67,7 @@ try {
         live.waitForEvent('download'),
         live.locator('.scene-tools [data-action="capture"]').click(),
     ]);
-    assert.equal(balconyPhoto.suggestedFilename(), 'Kaghaz-Passage-v5.png');
+    assert.equal(balconyPhoto.suggestedFilename(), 'Kaghaz-Passage-v6.png');
     await balconyPhoto.saveAs(`${output}/balcony-live.png`);
     await live.locator('.floor-picker [data-level="0"]').click();
     await live.waitForFunction(()=>document.querySelector('#scene').dataset.floor==='0',undefined,{timeout:30_000});
@@ -148,9 +152,32 @@ try {
     await live.locator('[name="subtitle"]').fill('آزمون ثبت غرفه');
     await live.locator('[name="productName"]').fill('مقوای نمایشی');
     await live.locator('#creator-form button[type="submit"]').click();
-    await live.waitForFunction(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v5')).customBooths.length===1);
+    await live.waitForFunction(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v6')).customBooths.length===1);
+    await live.locator('.main-nav [data-action="view-catalog"]').click();
+    await live.locator('#clear-filter').click();
+    assert.equal(await live.locator('#product-grid .product-card').count(), 49);
+    await live.locator('[data-profile-filter="honeycomb"]').click();
+    assert.equal(await live.locator('#product-grid .product-card').count(), 3);
+    await live.locator('button.product-open[data-product="honeycomb-15"]').click();
+    await live.locator('#product-studio canvas').waitFor({ timeout:45_000 });
+    assert.ok([...loaded].some(url => url.endsWith('/v6/models/honeycomb.glb')));
+    await live.locator('[data-inspection="edge"]').click();
+    await live.locator('#studio-separation').fill('73');
+    assert.equal(await live.locator('#product-studio').getAttribute('data-inspection'), 'edge');
+    assert.match(await live.locator('#separation-output').textContent(), /۷۳/);
+    await live.screenshot({path:`${output}/v6-honeycomb-webgl.png`});
+    await live.keyboard.press('Escape');
+    await live.locator('.main-nav [data-action="view-market"]').click();
+    await live.locator('.material-tile[data-show-render="microflute"]').click();
+    await live.locator('#gallery-title').waitFor();
+    assert.equal(await live.locator('#gallery-title').textContent(), 'ورق میکروفلوت');
+    await live.locator('[data-action="gallery-zoom"]').click();
+    await live.waitForFunction(() => document.querySelector('.gallery-stage.zoomed img')?.naturalWidth === 2304);
+    assert.ok((await live.locator('#gallery-download').getAttribute('href')).endsWith('/microflute.webp'));
+    await live.keyboard.press('Escape');
     await live.reload();
-    assert.equal(await live.evaluate(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v5')).inquiry[0].productId),'a4-80');
+    assert.equal(await live.evaluate(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v6')).inquiry[0].productId),'a4-80');
+    assert.equal(await live.evaluate(() => localStorage.getItem('kaghaz.workspace.v5')), 'version-five-kept');
     assert.deepEqual(errors,[]);
     assert.deepEqual(missing,[]);
     console.log('WebGL2 passage, upper pedestrian deck, all seven stations and saved booths passed.');
@@ -168,18 +195,18 @@ try {
     assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await mobile.screenshot({ path: `${output}/mobile-fallback.png` });
     await mobile.locator('.render-link').click();
-    await mobile.locator('[data-review="balcony"]').click();
+    await mobile.locator('[data-review="passage"]').click();
     await mobile.locator('[data-action="gallery-zoom"]').click();
     await mobile.waitForFunction(()=>{
         const img=document.querySelector('.gallery-stage.zoomed img');
-        return img?.complete && img.naturalWidth>1300;
+        return img?.complete && img.naturalWidth===3840;
     });
-    assert.ok((await mobile.locator('#gallery-download').getAttribute('href')).endsWith('/balcony.webp'));
+    assert.ok((await mobile.locator('#gallery-download').getAttribute('href')).endsWith('/passage.webp'));
     await mobile.locator('dialog [data-action="close"]').click();
     await mobile.locator('.station-dock [data-station="fold"]').click();
     await mobile.locator('#fold-amount').fill('42');
     assert.equal(await mobile.locator('#fold-canvas').getAttribute('data-progress'),'42');
-    assert.deepEqual(await mobile.locator('.version-menu a').evaluateAll(links=>links.map(a=>new URL(a.href).pathname)),['/Kaghaz/v4/','/Kaghaz/v3/','/Kaghaz/v2/','/Kaghaz/v1/']);
+    assert.deepEqual(await mobile.locator('.version-menu a').evaluateAll(links=>links.map(a=>new URL(a.href).pathname)),['/Kaghaz/v5/','/Kaghaz/v4/','/Kaghaz/v3/','/Kaghaz/v2/','/Kaghaz/v1/']);
     console.log('Mobile fallback, Cycles gallery zoom and folding without WebGL passed.');
 } finally {
     await browser?.close();

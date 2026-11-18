@@ -1,0 +1,233 @@
+{
+  "version": 6,
+  "assets": [
+    {
+      "id": "carbonless",
+      "file": "models/carbonless.glb",
+      "units": "meters",
+      "bytes": 409884,
+      "sourceBytes": 18869100,
+      "triangles": 7908,
+      "sha256": "2124df897102935605825b08769ba179367bda8183d9fe32321e6904e8b459cc"
+    },
+    {
+      "id": "foil",
+      "file": "models/foil.glb",
+      "units": "meters",
+      "bytes": 367892,
+      "sourceBytes": 9790424,
+      "triangles": 6852,
+      "sha256": "fb911bfd1bcc783d338a86f334ec03c8488ce2a92459a0337c1ed0447e88dfbb"
+    },
+    {
+      "id": "labels",
+      "file": "models/labels.glb",
+      "units": "meters",
+      "bytes": 674756,
+      "sourceBytes": 22279776,
+      "triangles": 9368,
+      "sha256": "15149802ba9d42234d7aa09fa67c7e0798620d17579965e438576b26971542ad"
+    },
+    {
+      "id": "microflute",
+      "file": "models/microflute.glb",
+      "units": "meters",
+      "bytes": 535036,
+      "sourceBytes": 12245012,
+      "triangles": 9380,
+      "sha256": "3c12f928ab42f35c01cd34676386bc02a7d48a81527bfdc090d44ce20560d705"
+    },
+    {
+      "id": "vellum",
+      "file": "models/vellum.glb",
+      "units": "meters",
+      "bytes": 224020,
+      "sourceBytes": 9437204,
+      "triangles": 3772,
+      "sha256": "95eaf3d50a366356e01babd6ee7e11fe7635a1057bcebadcc5aae101c013bba6"
+    },
+    {
+      "id": "deckle",
+      "file": "models/deckle.glb",
+      "units": "meters",
+      "bytes": 1109412,
+      "sourceBytes": 13389240,
+      "triangles": 31848,
+      "sha256": "16c5c4543966f46c9e787c1f39b2cecdb9e7c2b97512f1a5d32f5f3aa4c53c34"
+    },
+    {
+      "id": "coated-board",
+      "file": "models/coated-board.glb",
+      "units": "meters",
+      "bytes": 435852,
+      "sourceBytes": 10889728,
+      "triangles": 4940,
+      "sha256": "7afba4f1ccc0c6efce61d027f2186594a2e6a8654eb631873cb3ccb1d14364ae"
+    },
+    {
+      "id": "honeycomb",
+      "file": "models/honeycomb.glb",
+      "units": "meters",
+      "bytes": 983652,
+      "sourceBytes": 12693528,
+      "triangles": 11288,
+      "sha256": "db8577327b0ff5635134c0e2451dc0e97ed148c37db2057b0d4f9af5b5e4ffa4"
+    }
+  ],
+  "renders": [
+    {
+      "file": "renders/passage.webp",
+      "width": 3840,
+      "height": 2160,
+      "bytes": 760662,
+      "sha256": "9d12cf5d505074ba1fd5774c1fabcbe6104b630c912e11bdb024d59e8831fd41",
+      "preview": {
+        "file": "renders/passage-thumb.webp",
+        "width": 1200,
+        "height": 675,
+        "bytes": 85658,
+        "sha256": "b72c67265c285f76ff1514f842d218ba44a6a73787bdc3662e78a5dc5b045d9c"
+      }
+    },
+    {
+      "file": "renders/store.webp",
+      "width": 2560,
+      "height": 1600,
+      "bytes": 563218,
+      "sha256": "7cb038702c62326d10b30616ab545f03c1fdcb2271105eecef0d9880f40cbe7f",
+      "preview": {
+        "file": "renders/store-thumb.webp",
+        "width": 1200,
+        "height": 750,
+        "bytes": 67076,
+        "sha256": "d56396d4ce3a0f4a1925469eaf69368e400144c2fc5f967fedd82ea210731b2e"
+      }
+    },
+    {
+      "file": "renders/balcony.webp",
+      "width": 2560,
+      "height": 1600,
+      "bytes": 360896,
+      "sha256": "a2f514b8128a5828916a00926cd0ac5f2d34e42562a9cc4bda3489a3cd0103d6",
+      "preview": {
+        "file": "renders/balcony-thumb.webp",
+        "width": 1200,
+        "height": 750,
+        "bytes": 69882,
+        "sha256": "3c04aabd1f200a0e94edcec7f1ea2b8364e13dad3bd579a08d24b3f4a3af27fd"
+      }
+    },
+    {
+      "file": "renders/carbonless.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 102440,
+      "sha256": "4a887ea17f48c058a4383e7866cfadaeca3d21a30bc7e6532a4f7d1fb431dfb1",
+      "preview": {
+        "file": "renders/carbonless-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 13594,
+        "sha256": "9f5e8bfb5a71dce998ae1e6dd765ebed8ce7f3d0fd51e8aafbf336ce9956887d"
+      }
+    },
+    {
+      "file": "renders/foil.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 104688,
+      "sha256": "7af6f5670676b0fd3aad76e217e78c0f241f6ba61c3af37072714a183e6b3191",
+      "preview": {
+        "file": "renders/foil-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 14192,
+        "sha256": "f2c99ade850b6dc04334867ed8fc105678cdba03ee605c42ca266d6b3aa2a1f1"
+      }
+    },
+    {
+      "file": "renders/labels.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 142844,
+      "sha256": "65df146fdb682470e92d07a17cb2f663b2f8a4cdcbc2f39135a58d770b59f21b",
+      "preview": {
+        "file": "renders/labels-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 19938,
+        "sha256": "d6b561352a69bf7118c50def1149fc53a1ba9afbf84e68621255fa4e930146db"
+      }
+    },
+    {
+      "file": "renders/microflute.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 140080,
+      "sha256": "4b106cde1293e33fbef19fb3962e5231c4a99d0230d2fc8a631aafe7577d26f7",
+      "preview": {
+        "file": "renders/microflute-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 20424,
+        "sha256": "d3604b9a8ee3fce9bc89d5b83c1acfb074f1b605d11c60172232fe1ae38f1231"
+      }
+    },
+    {
+      "file": "renders/vellum.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 105682,
+      "sha256": "13c7626ab06d0fa056fef6a1c594608fade9486fb2bf9d87f9772d8199378469",
+      "preview": {
+        "file": "renders/vellum-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 8902,
+        "sha256": "e04a3e012e2576091b245a5401a47a10e81d34e0ffe54123a9db3cc0b54d20a7"
+      }
+    },
+    {
+      "file": "renders/deckle.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 80714,
+      "sha256": "83a0bc99b4fdb502d30e6627798c74f9fbfd86571949bd80552474e4ee050017",
+      "preview": {
+        "file": "renders/deckle-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 10308,
+        "sha256": "adb7af91bc584729add9eb7712b96e8494ae440c3441d3b857e5a86ae4bf0211"
+      }
+    },
+    {
+      "file": "renders/coated-board.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 141742,
+      "sha256": "5230b8924e4ed81bc509f25c9e4ee37388692599d4b64e45f717517a85c44417",
+      "preview": {
+        "file": "renders/coated-board-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 22572,
+        "sha256": "bfb59c020d2cb927742bc03e689c538e5a2e962e4a927edd3d2510592c013065"
+      }
+    },
+    {
+      "file": "renders/honeycomb.webp",
+      "width": 2304,
+      "height": 1574,
+      "bytes": 163760,
+      "sha256": "8f969cd390cfce4efb6103dbd5b5e8ecb98e8ff40e5573db67cffbc745c71d35",
+      "preview": {
+        "file": "renders/honeycomb-thumb.webp",
+        "width": 740,
+        "height": 506,
+        "bytes": 25742,
+        "sha256": "d24abd17c6162609204d6101021fc98250e611923170ffbced029b1bdc066118"
+      }
+    }
+  ]
+}

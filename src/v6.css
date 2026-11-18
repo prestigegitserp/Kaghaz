@@ -1,0 +1,58 @@
+:root {
+    --paper: #faf8f0;
+    --line: #dad9cc;
+    --green: #315e55;
+    --deep: #1d4140;
+    --muted: #53625c;
+}
+body { background: radial-gradient(ellipse at 75% -22%, #faf9f2 14%, #eeeee5 69%, #e5e9de); }
+.app-header { background: #fcfaf2f6; border-color: #d8dacd; color: #254d47; }
+.brand-mark, .inquiry-button { background: #254e47; }
+.hall-heading h1 { color: #224942; }
+.hall-heading .render-link { background: #254e47; color: #fff8e6; border-color: #254e47; }
+.hall-heading .render-link:hover { background: #173b36; }
+.scene-shell { border-color: #9b9e91; border-radius: 11px; }
+.scene-caption { background: #233c37eb; color: #f4f4e8; }
+.material-room { margin-top: 23px; }
+.material-room-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 11px; }
+.material-room-heading h2 { color: #294e46; font-size: clamp(17px, 2vw, 21px); }
+.material-room-heading button { color: #35574e; font-size: 11px; }
+.material-room-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.material-tile { overflow: hidden; background: #f8f6ec; border: 1px solid #dad9c8; border-radius: 7px; text-align: start; padding: 0; }
+.material-tile:hover, .material-tile:focus-visible { border-color: #578578; }
+.material-tile > img { display: block; width: 100%; aspect-ratio: 2.05; object-fit: cover; background: #394a49; }
+.material-tile > span { display: flex; align-items: center; justify-content: space-between; gap: 5px; color: #2d4c43; padding: 10px 13px 9px; font-size: 13px; }
+.material-tile svg { flex: none; }
+.catalog-mode .material-room { display: none; }
+.material-filters { display: none; }
+.catalog-mode .material-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: -7px 0 19px; }
+.material-filters > button { border: 1px solid #d2d7c9; background: #f8f6ed; border-radius: 5px; padding: 7px 10px; color: #486155; font-size: 11px; }
+.material-filters > button[aria-pressed="true"] { background: #315e55; border-color: #315e55; color: #fff; }
+.product-kind { color: #2c4e47; background: #fffaf0e8; }
+.product-meta { color: #5c6b60; }
+.product-info .product-name { font-size: 13px; color: #294e46; }
+.product-card .art-annotation { color: #2d4d42; background: #faf7eced; border-radius: 3px; padding: 2px 4px; font-size: 8px; }
+.v6-gallery { padding: 20px; width: min(1190px, calc(100% - 30px)); }
+.v6-gallery .gallery-stage { max-height: 56dvh; }
+.v6-gallery .gallery-stage .review-image { height: auto; max-height: 56dvh; }
+.v6-gallery .gallery-stage.zoomed .review-image { width: max(180%, 1100px); max-height: none; }
+.v6-gallery .gallery-caption { background: #f2f1e8; border-top: 1px solid #d7d9cc; color: #28443e; }
+.gallery-rail { justify-content: flex-start; direction: rtl; overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; padding: 8px 10px; gap: 7px; }
+.gallery-rail > button { flex: 0 0 127px; overflow: hidden; padding: 0; background: #f6f5ec; border: 1px solid #d5dbcb; color: #334d46; scroll-snap-align: start; }
+.gallery-rail > button[aria-pressed="true"] { background: #315e55; color: #fff; border-color: #315e55; }
+.gallery-rail img { width: 100%; aspect-ratio: 1.64; object-fit: cover; display: block; background: #374541; }
+.gallery-rail span { padding: 5px 4px; display: block; white-space: normal; line-height: 1.55; }
+.gallery-archive { padding-top: 10px; font-size: 11px; color: #536358; }
+.gallery-archive summary { cursor: pointer; }
+.gallery-archive > div { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0; }
+.gallery-archive a { display: inline-flex; gap: 4px; color: #305b50; }
+@media (max-width: 850px) {
+    .material-tile > span { padding: 8px 9px; font-size: 11px; }
+}
+@media (max-width: 600px) {
+    .material-room-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+    .material-room { margin-top: 14px; }
+    .v6-gallery { padding: 12px; }
+    .gallery-rail > button { flex-basis: 106px; }
+    .v6-gallery .gallery-caption { gap: 7px; padding: 8px; }
+}

@@ -1,3 +1,4 @@
+import { MATERIAL_PROFILES } from '../domain/material-profiles.ts';
 import * as T from 'three';
 import type { Booth, Product } from '../domain/model.ts';
 import { boothPose } from '../domain/model.ts';
@@ -127,6 +128,8 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     const architecture = new T.Group(), inventory = new T.Group(), authored = new T.Group(), fallback = new T.Group();
     const shade=library.color(booth.accent,.53),metal=library.color('#344742',.41),anodized=library.color('#979c8e',.36);
     const cream = library.color('#e9e6d8'), rng = seeded(booth.slot * 91 + 38);
+    const own = products.filter(p => p.boothId === booth.id);
+    const specimen = own.find(p => p.profile && MATERIAL_PROFILES[p.profile].lead === p.id);
     const isBoard = booth.category === 'board', isCreative = booth.category === 'creative';
     const isPack = booth.category === 'packaging', swatches = isBoard || isCreative;
     root.name = `booth:${booth.id}`;
@@ -163,6 +166,13 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     }
     a.box(anodized,[-.97,1.978,.069],[3.78,.036,.041],[],.78,true);
     a.box(shade,[2.125,2.477,.051],[.69,.242,.047],[],.93,true);
+    a.box(m.metal, [2.11,.045,-.343], [1.22,.013,.56], [], .91, false);
+    for (let slat=0; slat<18; slat++) {
+        a.box(anodized,[1.54+slat*.065,.053,.045],[.008,.006,.13],[],.9,false);
+    }
+    for (const x of [.97,1.034]) a.box(anodized,[x,1.29,.124],[.024,.269,.039],[],.98,true);
+    for (const x of [-2.86,-1.06,.91])
+        for (const y of [.48,2.69]) a.box(metal,[x,y,.091],[.064,.035,.021],[],.86,false);
 
     for (const [bay,sx] of [-1.87,0,1.87].entries()) {
         b.box(shade,[sx,1.55,-3.709],[1.72,2.63,.042],[],.88 + bay*.047);
@@ -220,7 +230,12 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     for (const dx of [-.285,.285]) a.box(metal,[standX+dx,.48,standZ],[.039,.96,.52],[],.85,true);
     for (const h of [.16,.52,.89]) {
         a.box(m.wood,[standX,h,standZ],[.648,.041,.55],[],.94,true);
-        if (isPack) carton(a,library,standX,h+.024,standZ,.43,.21,.38,h>.8);
+        if (h > .8 && specimen?.profile) {
+            a.box(m.metal, [standX,h+.025,standZ], [.56,.017,.44], [], .92, true);
+            const surface = library.color(specimen.color,.68);
+            for (let i=0;i<3;i++)
+                details.box(surface,[standX-.04+i*.02,h+.039+i*.011,standZ],[.35,.009,.31],[0,i*.116,0],.87+i*.045);
+        } else if (isPack) carton(a,library,standX,h+.024,standZ,.43,.21,.38,h>.8);
         else if (swatches) {
             for (let k=0;k<5;k++) a.box(library.color(STOCK_COLORS[(booth.slot+k)%STOCK_COLORS.length]),
                 [standX+k*.009,h+.035+k*.028,standZ],[.50,.020,.42],[0,k*.064,0],.94,false);
@@ -232,6 +247,7 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     const slots: BoothCell['slots'] = [];
     const add=(asset:AssetId, position:[number,number,number], rotation=0, scale=1) =>
         slots.push({asset,position,rotation,scale});
+    if (specimen?.profile) add(specimen.profile, [standX,.93,standZ], -.12, 1.40);
     add('counter-accessories',[.13,1.031,-1.116],.12,.99);
     if (isPack) {
         carton(details,library,-1.54,1.028,-1.01,.44,.27,.43,true);
@@ -274,9 +290,9 @@ export function createBooth(booth: Booth, products: Product[], library: Material
         targets.push({mesh:box,boothId:booth.id,productId});
     };
     proxy([0,2.998,.137],[5.94,.49,.18]);
-    const own = products.filter(p=>p.boothId===booth.id);
     own.slice(0,3).forEach((product,i)=>proxy([-1.53+i*.63,1.14,-1.01],[.56,.33,.57],product.id));
     if (own.length) proxy([standX,.56,standZ],[.65,1.12,.56],own[0].id);
+    if (specimen) proxy([standX,1.037,standZ],[.57,.23,.49],specimen.id);
 
     const colliders: Collider[] = [];
     function collider(x:number,z:number,w:number,d:number,height:number,occludes=true) {

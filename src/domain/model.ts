@@ -1,3 +1,4 @@
+import type { MaterialProfileId } from './material-profiles.ts';
 import { boothCoordinates } from './hall.ts';
 
 export type ProductKind = 'ream' | 'sheet' | 'kraft' | 'box' | 'swatch' | 'roll' | 'notebook';
@@ -16,6 +17,7 @@ export interface Product {
     detail: string;
     minOrder: number;
     sample: boolean;
+    profile?: MaterialProfileId;
 }
 export interface Booth {
     id: string;
@@ -41,7 +43,7 @@ export interface SavedState {
     customProducts: Product[];
     quality: Quality;
 }
-export const STORAGE_KEY = 'kaghaz.workspace.v5';
+export const STORAGE_KEY = 'kaghaz.workspace.v6';
 export const CATEGORIES: {
     id: Category;
     label: string;

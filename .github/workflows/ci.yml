@@ -1,9 +1,9 @@
 name: Validate Kaghaz
 on:
   push:
-    branches: [v5]
+    branches: [v6]
   pull_request:
-    branches: [v5]
+    branches: [v6]
 permissions:
   contents: read
 jobs:
@@ -22,16 +22,16 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          VITE_PUBLIC_BASE: /Kaghaz/v5/
+          VITE_PUBLIC_BASE: /Kaghaz/v6/
       - run: npx playwright install chromium
-      - run: node tests/v5-browser.mjs
+      - run: node tests/v6-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: kaghaz-v5-browser
+          name: kaghaz-v6-browser
           path: qa
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
-          name: kaghaz-v5-dist
+          name: kaghaz-v6-dist
           path: dist

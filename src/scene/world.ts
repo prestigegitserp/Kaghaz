@@ -1,3 +1,4 @@
+import { STATION_SPECIMENS } from '../domain/material-profiles.ts';
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -43,6 +44,7 @@ interface Trip {
 export class BazaarWorld {
     readonly renderer: T.WebGLRenderer;
     readonly scene = new T.Scene();
+    private specimenDisplays = new Map<StationId, T.Group>();
     readonly camera = new T.PerspectiveCamera(PHOTO_SHOTS[0].fov, 1, .07, 92);
     readonly materials: MaterialLibrary;
     readonly assets = new AuthoredAssets();
@@ -445,6 +447,37 @@ export class BazaarWorld {
         }
         this.callback.hotspots(projected);
     }
+    private updateSpecimenDisplays() {
+        for (const id of STATION_IDS) {
+            const contents = STATION_SPECIMENS[id];
+            if (!contents) continue;
+            const spot = HALL.stations[id], [x,z] = spot.position;
+            const active = spot.level === this.level && Math.hypot(this.camera.position.x-x,this.camera.position.z-z) < 8.4;
+            let table = this.specimenDisplays.get(id);
+            if (!table && active) {
+                table = new T.Group();
+                this.specimenDisplays.set(id, table);
+                table.position.set(x,HALL.decks[spot.level]+1.054,z);
+                this.scene.add(table);
+                const display = table;
+                for (const { asset, offset, scale } of contents) {
+                    void this.assets.instance(asset).then(sample => {
+                        if (this.abort.signal.aborted) return;
+                        sample.position.z = offset;
+                        sample.rotation.y = -.09 + offset*.17;
+                        sample.scale.setScalar(scale);
+                        display.add(sample);
+                        this.renderer.shadowMap.needsUpdate = true;
+                        this.invalidate();
+                    }).catch(() => {});
+                }
+            }
+            if (table && table.visible !== active) {
+                table.visible = active;
+                this.renderer.shadowMap.needsUpdate = true;
+            }
+        }
+    }
     private async loadCell(cell: BoothCell): Promise<void> {
         if (this.pendingAssets.has(cell) || this.readyAssets.has(cell) || this.failedAssets.has(cell)) return;
         this.pendingAssets.add(cell);
@@ -628,6 +661,7 @@ export class BazaarWorld {
             if (cell.authored.visible !== show) this.renderer.shadowMap.needsUpdate = true;
             cell.authored.visible = show; cell.fallback.visible = !show;
         }
+        this.updateSpecimenDisplays();
         if (!this.trip) this.marker.visible=false;
         this.positionHotspots();
         if (this.composer)
@@ -657,7 +691,7 @@ export class BazaarWorld {
                 const a = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 a.href = url;
-                a.download = 'Kaghaz-Passage-v5.png';
+                a.download = 'Kaghaz-Passage-v6.png';
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(url), 2000);
             } });

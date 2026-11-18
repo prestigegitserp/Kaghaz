@@ -1,4 +1,5 @@
 import type { Booth, Product } from './model.ts';
+import { SPECIALTY_PRODUCTS } from './specialty.ts';
 export const BOOTHS: Booth[] = [
     { id: 'sepid', name: 'سرای سپید', subtitle: 'کاغذ تحریر، چاپ و نشر', category: 'printing', accent: '#3c5c4e', slot: 0 },
     { id: 'rang', name: 'خانهٔ رنگ', subtitle: 'کاغذهای رنگی و خلاقانه', category: 'creative', accent: '#96634d', slot: 1 },
@@ -36,4 +37,5 @@ export const PRODUCTS: Product[] = [
     p('envelope', 'baste', 'پاکت کرافت بنددار', 'packaging', 'kraft', 120, '۲۵ × ۳۵ سانتی‌متر', 'عدد', '#b69360', 'پاکت کرافت با لبهٔ تاخورده برای اسناد و بسته‌بندی.', 100),
     p('giftbox', 'baste', 'جعبهٔ هدیهٔ طبیعی', 'packaging', 'box', 350, '۲۰ × ۲۰ × ۸ سانتی‌متر', 'عدد', '#ad926c', 'جعبهٔ کرافت ساده؛ امکان افزودن کاتالوگ و مشخصات اختصاصی در غرفهٔ شما.', 50),
     p('recycled', 'baste', 'کاغذ بازیافتی طبیعی', 'packaging', 'sheet', 100, '۷۰ × ۱۰۰ سانتی‌متر', 'بند ۵۰۰ برگی', '#bbb398', 'تناژ طبیعی و الیاف قابل‌مشاهده؛ درصد بازیافت باید از تأمین‌کنندهٔ واقعی دریافت شود.'),
+    ...SPECIALTY_PRODUCTS,
 ];

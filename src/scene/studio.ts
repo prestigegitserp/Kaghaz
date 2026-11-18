@@ -1,3 +1,4 @@
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Product } from '../domain/model.ts';
@@ -16,11 +17,11 @@ export interface StudioControl {
 
 const vertical: Record<string, number> = {
     wrapper: .20, 'loose-sheets': .07, flaps: .24, fill: .075, straps: .19,
-    core: .27, cover: .13, swatch: .05, label: .025,
+    core: .27, cover: .13, swatch: .05, label: .025, lid: .29, paper: .085,
 };
 
 export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAssets, ready:()=>void,
-    asset:AssetId=assetForProduct(product.kind)):StudioControl {
+    asset:AssetId=assetForProduct(product.kind, product.profile)):StudioControl {
     const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.45));
     renderer.outputColorSpace = T.SRGBColorSpace;
@@ -32,7 +33,17 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
     renderer.domElement.tabIndex = 0;
     renderer.domElement.setAttribute('aria-label', 'برای چرخاندن مدل سه‌بعدی، تصویر را بکشید.');
     const scene = new T.Scene();
-    scene.background = new T.Color('#3d3c35');
+    scene.background = new T.Color(product.profile ? '#354241' : '#3d3c35');
+    const environment = product.profile ? new T.PMREMGenerator(renderer) : undefined;
+    let reflections: T.WebGLRenderTarget | undefined;
+    if (environment) {
+        const room = new RoomEnvironment();
+        reflections = environment.fromScene(room, .07);
+        scene.environment = reflections.texture;
+        scene.environmentIntensity = product.profile === 'foil' ? .75 : .38;
+        room.dispose();
+        environment.dispose();
+    }
     const camera = new T.PerspectiveCamera(37, 1, .008, 11);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -53,7 +64,7 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
     scene.add(sky, light, light.target, rim);
 
     const floorGeometry = new T.PlaneGeometry(200, 200);
-    const floorMaterial = new T.MeshStandardMaterial({ color: '#70685a', roughness: .82 });
+    const floorMaterial = new T.MeshStandardMaterial({ color: product.profile ? '#485752' : '#70685a', roughness: .82 });
     const floor = new T.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -.012;
@@ -114,7 +125,10 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
     function setSeparation(value: number) {
         separation = T.MathUtils.clamp(value, 0, 1);
         root.traverse(object => {
-            if (object instanceof T.Mesh) object.position.y = (vertical[String(object.userData.part)] || 0) * separation;
+            if (!(object instanceof T.Mesh)) return;
+            const part = String(object.userData.part);
+            const lift = product.profile && part === 'core' ? .115 : vertical[part] || 0;
+            object.position.y = lift * separation;
         });
         invalidate(true);
     }
@@ -173,6 +187,7 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
             resize.disconnect();
             controls.dispose();
             light.shadow.dispose();
+            reflections?.dispose();
             floorGeometry.dispose();
             floorMaterial.dispose();
             animatedMaterials.forEach(m=>m.dispose());

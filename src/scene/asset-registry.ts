@@ -1,3 +1,4 @@
+import { MATERIAL_PROFILES, PROFILE_IDS, type MaterialProfileId } from '../domain/material-profiles.ts';
 import type { ProductKind } from '../domain/model.ts';
 
 const legacy = {
@@ -15,12 +16,13 @@ const updated = {
     'kraft-roll': 'رول کرافت با پیچش کاغذ و هستهٔ توخالی',
 };
 const v4 = { 'paper-ream-modern': 'لفاف تحریر بهارستان', 'paper-ream-open-modern': 'بند نیمه‌باز بهارستان' };
+const specimens = Object.fromEntries(PROFILE_IDS.map(id => [id, MATERIAL_PROFILES[id].title]));
 const current = {
     'wrapped-stock-pallet':'پالت بسته‌شده با فیلم و تسمه',
     'loaded-paper-cart':'چرخ‌دستی بارگیری‌شدهٔ پاساژ',
     'counter-accessories':'ماشین‌حساب، قبض و چسب‌کش',
 };
-export type AssetId = keyof typeof legacy | keyof typeof updated | keyof typeof v4 | keyof typeof current;
+export type AssetId = keyof typeof legacy | keyof typeof updated | keyof typeof v4 | keyof typeof current | MaterialProfileId;
 export interface AssetDefinition {
     id: AssetId;
     url: string;
@@ -30,14 +32,14 @@ export interface AssetDefinition {
     maxTriangles: number;
 }
 export const ASSET_REGISTRY = Object.fromEntries(
-    Object.entries({ ...legacy, ...updated, ...v4, ...current }).map(([id, label]) => [id, {
-        id, label, url: `${Object.hasOwn(current,id) ? 'v5' : Object.hasOwn(v4,id) ? 'v4' : Object.hasOwn(updated,id) ? 'v3' : 'v2'}/models/${id}.glb`,
+    Object.entries({ ...legacy, ...updated, ...v4, ...current, ...specimens }).map(([id, label]) => [id, {
+        id, label, url: `${Object.hasOwn(specimens,id) ? 'v6' : Object.hasOwn(current,id) ? 'v5' : Object.hasOwn(v4,id) ? 'v4' : Object.hasOwn(updated,id) ? 'v3' : 'v2'}/models/${id}.glb`,
         units: 'meters', maxBytes: 2 * 1024 * 1024, maxTriangles: 60_000,
     }]),
 ) as Record<AssetId, AssetDefinition>;
 
-export function assetForProduct(kind: ProductKind): AssetId {
-    return ({
+export function assetForProduct(kind: ProductKind, profile?: MaterialProfileId): AssetId {
+    return profile ?? ({
         ream: 'paper-ream-open-modern', sheet: 'paper-bundle', kraft: 'paper-bundle',
         box: 'carton-open', roll: 'kraft-roll', swatch: 'swatch-fan', notebook: 'notebook',
     } as const)[kind];

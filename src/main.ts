@@ -6,6 +6,8 @@ import './style.css';
 import './v3.css';
 import './v4.css';
 import './v5.css';
+import './v6.css';
+import { MATERIAL_PROFILES, PROFILE_IDS, renderImage, type MaterialProfileId } from './domain/material-profiles.ts';
 import { BOOTHS, PRODUCTS } from './domain/catalog.ts';
 import { CATEGORIES, boothPose, emptyState, escapeHtml as esc, inquiryText, normalize, number, parseState, quantity, searchProducts, type Booth, type Category, type Product, type Quality } from './domain/model.ts';
 import { deleteAsset, download, getAsset, loadState, putAsset, saveState } from './domain/storage.ts';
@@ -24,19 +26,22 @@ let state = loadState();
 let category: Category = 'all', query = '', selectedBooth: string | undefined, favoriteFilter = false, currentView = 'market';
 let world: BazaarWorld | undefined, studioCleanup: (() => void) | undefined, mode: 'walk' | 'orbit' = 'walk', metricsVisible = false;
 let studio: StudioControl | undefined, lighting = 'day', comparison: string[] = [], tourIndex = -1;
-let activeLevel:Level=0;
-const versionUrl = (version: 1 | 2 | 3 | 4) => new URL(`../v${version}/`, location.href).href;
+let activeLevel: Level = 0;
+let profileFilter: MaterialProfileId | undefined;
+const versionUrl = (version: 1 | 2 | 3 | 4 | 5) => new URL(`../v${version}/`, location.href).href;
 const booths = () => [...BOOTHS, ...state.customBooths];
 const products = () => [...PRODUCTS, ...state.customProducts];
 const hallImage = (id:string) => `${import.meta.env.BASE_URL}v4/renders/${id}.webp`;
-const passageImage=(id:string)=>`${import.meta.env.BASE_URL}v5/renders/${id}.webp`;
 const GALLERY = [
-    {id:'passage',title:'راهروی پاساژ',detail:'ویترین‌های شیشه‌ای در دو سمت راهرو و بالکنِ طبقهٔ اول',url:passageImage('passage')},
-    {id:'store',title:'داخل مغازه',detail:'قفسهٔ بندها، کارتن‌ها و وسایل پیشخوان',url:passageImage('store')},
-    {id:'balcony',title:'بالکن طبقهٔ اول',detail:'ردیف مغازه‌ها کنار نرده و پاگرد پله',url:passageImage('balcony')},
-    {id:'stock',title:'بار و لفاف',detail:'چین فیلم، تسمه، برچسب و چرخ‌دستی پُر',url:passageImage('stock')},
-    ...REVIEW_VIEWS.slice(2).map(view=>({...view,url:view.id==='ream'?hallImage('ream'):reviewImage(view.id)})),
-];
+    { id: 'passage', title: 'ورودی پاساژ', detail: 'راهروی دوطبقه، شیشهٔ ویترین و نور پیوستهٔ زیر بالکن' },
+    { id: 'store', title: 'داخل مغازه', detail: 'قفسه‌های کاغذ، پیشخوان، نمونهٔ چاپی و استند عرضۀ کالا' },
+    { id: 'balcony', title: 'بالکن طبقهٔ اول', detail: 'اتصال پلکان به پاگرد و جزئیات دستگیره و شیشهٔ جان‌پناه' },
+    ...PROFILE_IDS.map(id => ({ id, title: MATERIAL_PROFILES[id].title, detail: MATERIAL_PROFILES[id].description })),
+].map(view => ({ ...view, url: renderImage(view.id, true), thumb: renderImage(view.id) }));
+const GALLERY_ARCHIVE = REVIEW_VIEWS.slice(2).map(view => ({
+    ...view, url: view.id === 'ream' ? hallImage('ream') : reviewImage(view.id),
+}));
+type GalleryView = (typeof GALLERY)[number];
 const STATION_ART = {
     samples: {icon:'layers',description:'نمونهٔ جنس را بچرخانید و از نزدیک ببینید.'},
     unwrap: {icon:'box',description:'فیلم و تسمهٔ بسته را جدا کنید.'},
@@ -55,7 +60,7 @@ app.innerHTML = `
     <button class="mobile-menu icon-button" data-action="sidebar" aria-controls="showroom-sidebar" aria-expanded="false" aria-label="فهرست غرفه‌ها">${icon('menu')}</button>
     <a class="brand" href="#" aria-label="کاغذ، شروع بازار"><span class="brand-mark">${folded}</span><span class="brand-name">کاغذ<small>KAGHAZ</small></span></a>
     <nav class="main-nav" aria-label="ناوبری اصلی"><button data-action="view-market" class="active">گشت‌وگذار بازار</button><button data-action="view-catalog">کاتالوگ کالاها</button><button data-action="cut">چیدمان برش</button><button data-action="creator">غرفهٔ من</button></nav>
-    <div class="header-actions"><details class="version-menu"><summary>نسخهٔ ۵</summary><div><a href="${versionUrl(4)}">نسخهٔ چهارم ${icon('arrow',13)}</a><a href="${versionUrl(3)}">نسخهٔ سوم ${icon('arrow', 13)}</a><a href="${versionUrl(2)}">نسخهٔ دوم ${icon('arrow', 13)}</a><a href="${versionUrl(1)}">نسخهٔ اول ${icon('arrow', 13)}</a></div></details>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
+    <div class="header-actions"><details class="version-menu"><summary>نسخهٔ ۶</summary><div><a href="${versionUrl(5)}">نسخهٔ پنجم ${icon('arrow',13)}</a><a href="${versionUrl(4)}">نسخهٔ چهارم ${icon('arrow',13)}</a><a href="${versionUrl(3)}">نسخهٔ سوم ${icon('arrow', 13)}</a><a href="${versionUrl(2)}">نسخهٔ دوم ${icon('arrow', 13)}</a><a href="${versionUrl(1)}">نسخهٔ اول ${icon('arrow', 13)}</a></div></details>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
   </header>
   <div class="workspace">
     <aside class="sidebar" id="showroom-sidebar" aria-label="غرفه‌ها و جست‌وجوی کالا">
@@ -72,10 +77,10 @@ app.innerHTML = `
     <main class="main-content" id="main-content">
       <div class="view-heading hall-heading">
         <div><div class="breadcrumb">${icon('location', 16)}<span>تهران · خیابان ظهیرالاسلام</span></div><h1 id="current-heading">پاساژ کاغذ بهارستان</h1></div>
-        <div class="hall-heading-actions"><button data-action="sidebar" class="secondary-button">${icon('store', 17)} فهرست غرفه‌ها</button><button data-action="gallery" class="secondary-button render-link">${icon('film', 16)} گالری پاساژ</button></div>
+        <div class="hall-heading-actions"><button data-action="sidebar" class="secondary-button">${icon('store', 17)} فهرست غرفه‌ها</button><button data-action="gallery" class="secondary-button render-link">${icon('film', 16)} گالری 4K</button></div>
       </div>
       <section class="scene-shell" aria-label="گردش سه‌بعدی در بازار">
-        <div id="scene" class="scene" data-floor="0" style="--arrival: url('${passageImage('passage')}')"><div class="scene-loading" id="scene-loading"><span>در حال آماده‌سازی نمای زنده…</span></div></div>
+        <div id="scene" class="scene" data-floor="0" style="--arrival: url('${renderImage('passage')}')"><div class="scene-loading" id="scene-loading"><span>در حال آماده‌سازی نمای زنده…</span></div></div>
         <div class="scene-topline"><div class="floor-group"><span class="scene-location" id="scene-location"><i></i> گردش زنده</span>
           <div class="floor-picker" aria-label="طبقات پاساژ"><button data-level="0" class="active" aria-pressed="true">همکف</button><button data-level="1" aria-pressed="false">طبقهٔ اول ↑</button></div></div><div class="scene-tools">${btn('shots', 'قاب‌های دوربین', 'film', 'aria-expanded="false" aria-controls="shot-panel"')}${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
         <div class="scene-editorial" id="scene-editorial"><button data-action="start">رفتن به اولین غرفه ${icon('arrow', 17)}</button></div>
@@ -91,12 +96,22 @@ app.innerHTML = `
         <div class="touch-controls" id="touch-controls"><button data-motion="0,1" aria-label="جلو">↑</button><div><button data-motion="-1,0" aria-label="چپ">←</button><button data-motion="0,-1" aria-label="عقب">↓</button><button data-motion="1,0" aria-label="راست">→</button></div></div>
         <div class="scene-caption"><span>طراحی الهام‌گرفته از پاساژهای کاغذ بهارستان</span><span id="light-caption">نور روز</span></div>
       </section>
+      <section class="material-room" aria-labelledby="material-room-title">
+        <div class="material-room-heading"><h2 id="material-room-title">نمونه‌خانهٔ کاغذ</h2><button class="text-button" data-action="specialty-catalog">دیدن کاتالوگ ${icon('arrow', 17)}</button></div>
+        <div class="material-room-grid">${PROFILE_IDS.map(id => `<button class="material-tile" data-show-render="${id}">
+          <img src="${renderImage(id)}" alt="" loading="lazy" decoding="async" />
+          <span><strong>${MATERIAL_PROFILES[id].label}</strong>${icon('arrow', 16)}</span>
+        </button>`).join('')}</div>
+      </section>
       <section class="station-section" id="station-section" aria-label="کارگاه‌های پاساژ"><div class="station-heading"><h2>کارگاه‌های پاساژ</h2></div>
         <div class="station-dock">${STATION_IDS.map(id=>`<button data-station="${id}" class="station-card" style="--station:${HALL.stations[id].accent}">
           <span class="station-icon">${icon(STATION_ART[id].icon,23)}</span><span><strong>${HALL.stations[id].label}</strong><small>${STATION_ART[id].description}</small><small class="station-floor">${levelName(HALL.stations[id].level as Level)}</small></span>${icon('arrow',17)}
         </button>`).join('')}</div>
       </section>
-      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><h2 id="catalog-title">روی پیشخوان بازار <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="product-grid" class="product-grid"></div></section>
+      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><h2 id="catalog-title">روی پیشخوان بازار <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="material-filters" class="material-filters" aria-label="فیلتر جنس">
+        <button data-profile-filter="all" aria-pressed="true">همهٔ جنس‌ها</button>
+        ${PROFILE_IDS.map(id => `<button data-profile-filter="${id}" aria-pressed="false">${MATERIAL_PROFILES[id].label}</button>`).join('')}
+      </div><div id="product-grid" class="product-grid"></div></section>
       <footer class="content-footer"><span>پاساژ کاغذ بهارستان</span><button data-action="help">دربارهٔ این تجربه ${icon('arrow', 14)}</button></footer>
     </main>
   </div>
@@ -113,7 +128,7 @@ function showLevel(level:Level) {
         button.classList.toggle('active',selected);
         button.setAttribute('aria-pressed',String(selected));
     });
-    if(!world)el('scene').style.setProperty('--arrival',`url('${passageImage(level===0?'passage':'balcony')}')`);
+    if(!world)el('scene').style.setProperty('--arrival',`url('${renderImage(level === 0 ? 'passage' : 'balcony')}')`);
     renderMap();
 }
 function persist() { if (!saveState(state))
@@ -128,9 +143,16 @@ function renderSidebar() {
     updateCounts();
     renderMap();
 }
-function filteredProducts() { let result = searchProducts(products(), booths(), query, category, selectedBooth); if (favoriteFilter)
-    result = result.filter(p => state.favorites.includes(p.id)); return result; }
+function filteredProducts() {
+    return searchProducts(products(), booths(), query, category, selectedBooth).filter(p =>
+        (!favoriteFilter || state.favorites.includes(p.id)) && (!profileFilter || p.profile === profileFilter),
+    );
+}
 function productDisplay(p: Product, large = false) {
+    if (p.profile) {
+        const label = MATERIAL_PROFILES[p.profile].title;
+        return `<img class="product-render" src="${renderImage(p.profile)}" alt="نمونهٔ ${label}" ${large ? '' : 'loading="lazy"'} decoding="async" />`;
+    }
     const plate = MATERIAL_PLATES[p.kind];
     if (!plate) return productArt(p, large);
     const description = REVIEW_VIEWS.find(view => view.id === plate)!.detail;
@@ -139,14 +161,17 @@ function productDisplay(p: Product, large = false) {
 }
 function renderProducts() {
     const result = filteredProducts(), visible = currentView === 'catalog' ? result : result.slice(0, 4);
-    const filtered = Boolean(query || category !== 'all' || selectedBooth || favoriteFilter);
+    const filtered = Boolean(query || category !== 'all' || selectedBooth || favoriteFilter || profileFilter);
+    for (const button of app.querySelectorAll<HTMLButtonElement>('[data-profile-filter]')) {
+        button.setAttribute('aria-pressed', String(button.dataset.profileFilter === (profileFilter || 'all')));
+    }
     el('clear-filter').hidden = !filtered;
     el('all-catalog').hidden = currentView === 'catalog';
     el('result-count').textContent = `${number(result.length)} کالا`;
     el('catalog-title').childNodes[0].textContent = favoriteFilter ? 'انتخاب‌های شما ' : selectedBooth ? `روی پیشخوان ${booths().find(b => b.id === selectedBooth)?.name} ` : 'روی پیشخوان بازار ';
     el('product-grid').innerHTML = visible.length ? visible.map(p => {
         const b = booths().find(b => b.id === p.boothId)!, favorite = state.favorites.includes(p.id), inq = state.inquiry.some(l => l.productId === p.id);
-        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productDisplay(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">${MATERIAL_PLATES[p.kind] ? 'رندر جنس' : 'نمای مفهومی'}</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
+        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productDisplay(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">${p.profile ? 'نمونهٔ خانواده' : MATERIAL_PLATES[p.kind] ? 'رندر جنس' : 'نمای مفهومی'}</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
     }).join('') : `<div class="empty-state">${icon(favoriteFilter ? 'heart' : 'search', 34)}<h3>${favoriteFilter ? 'هنوز چیزی نشان نکرده‌اید.' : 'کالایی با این مشخصات پیدا نشد.'}</h3><p>${favoriteFilter ? 'قلب کنار هر کالا، آن را اینجا نگه می‌دارد.' : 'نام کوتاه‌تر یا گرماژ دیگری را امتحان کنید.'}</p><button data-action="clear-filters" class="primary-button">بازگشت به راسته</button></div>`;
 }
 function setView(view: string) {
@@ -157,12 +182,13 @@ function setView(view: string) {
     el('current-heading').textContent = view === 'catalog' ? 'کاتالوگ کالاها' : selectedBooth ? booths().find(b => b.id === selectedBooth)?.name || 'پاساژ کاغذ بهارستان' : 'پاساژ کاغذ بهارستان';
     renderProducts();
 }
-function clearFilters() { category = 'all'; query = ''; selectedBooth = undefined; favoriteFilter = false; el<HTMLInputElement>('search').value = ''; renderSidebar(); renderProducts(); el('booth-focus').hidden = true; el('current-heading').textContent = currentView === 'catalog' ? 'کاتالوگ کالاها' : 'پاساژ کاغذ بهارستان'; }
+function clearFilters() { profileFilter = undefined; category = 'all'; query = ''; selectedBooth = undefined; favoriteFilter = false; el<HTMLInputElement>('search').value = ''; renderSidebar(); renderProducts(); el('booth-focus').hidden = true; el('current-heading').textContent = currentView === 'catalog' ? 'کاتالوگ کالاها' : 'پاساژ کاغذ بهارستان'; }
 function selectBooth(id: string, focus = true) {
     const b = booths().find(b => b.id === id);
     if (!b)
         return;
     selectedBooth = id;
+    profileFilter = undefined;
     favoriteFilter = false;
     category = 'all';
     query = '';
@@ -230,7 +256,8 @@ async function showProduct(id: string) {
     if (!p) return;
     const b = booths().find(booth => booth.id === p.boothId)!;
     const inInquiry = state.inquiry.some(line => line.productId === id);
-    const plate = MATERIAL_PLATES[p.kind];
+    const profile = p.profile ? MATERIAL_PROFILES[p.profile] : undefined;
+    const plate = p.profile || MATERIAL_PLATES[p.kind];
     const sheet = ['ream', 'sheet', 'kraft', 'swatch'].includes(p.kind);
     openModal(`${modalHead('میز بررسی جنس', esc(p.name))}
         <div class="product-dialog-body">
@@ -241,18 +268,20 @@ async function showProduct(id: string) {
               <div class="inspection-views" aria-label="نمای بررسی">${INSPECTION_VIEWS.map(v => `<button data-inspection="${v.id}" class="${v.id === 'whole' ? 'active' : ''}" aria-pressed="${v.id === 'whole'}" ${!plate && v.id !== 'whole' ? 'disabled' : ''}>${v.label}</button>`).join('')}</div>
               <div class="inspection-sliders" id="inspection-sliders" hidden>
                 <label>${icon('sun', 16)} زاویهٔ نور <output id="angle-output">۳۴°</output><input id="studio-angle" type="range" min="7" max="76" step="1" value="34" /></label>
-                <label>${icon('layers', 16)} فاصلهٔ اجزا <output id="separation-output">۰٪</output><input id="studio-separation" type="range" min="0" max="100" step="1" value="0" /></label>
+                ${p.profile === 'foil' ? '' : `<label>${icon('layers', 16)} فاصلهٔ اجزا <output id="separation-output">۰٪</output><input id="studio-separation" type="range" min="0" max="100" step="1" value="0" /></label>`}
               </div>
             </div>
-            <p class="studio-foot">${MATERIAL_NOTES[p.kind]} مدل، نمایندهٔ خانوادهٔ کالا است.</p>
+            <p class="studio-foot">${profile?.inspection || MATERIAL_NOTES[p.kind]} مدل و رندر، نمایندهٔ خانوادهٔ کالا هستند.</p>
           </div>
           <div class="product-detail">
             <button class="detail-vendor" data-booth="${b.id}" data-close-first="true"><i style="background:${b.accent}"></i>${esc(b.name)} ${icon('chevron', 15)}</button>
             <p class="product-description">${esc(p.detail)}</p>
-            <dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل سفارش نمونه</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl>
+            <dl class="specifications"><div><dt>${p.profile === 'labels' ? 'گرماژ رویه' : 'گرماژ'}</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل سفارش نمونه</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl>
             <div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(inInquiry ? 'check' : 'plus', 18)} ${inInquiry ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div>
             ${sheet ? `<button class="text-button detail-cut" data-cut-product="${p.id}">${icon('grid', 16)} محاسبهٔ چیدمان برش ${icon('arrow', 15)}</button>` : ''}
-            <button class="text-button detail-cut" data-proof-product="${p.id}">${icon('sun',16)} دیدن چاپ روی این جنس ${icon('arrow',15)}</button>
+            ${p.profile
+                ? `<button class="text-button detail-cut" data-show-render="${p.profile}">${icon('search', 16)} رندر کامل و بزرگ‌نمایی ${icon('arrow', 15)}</button>`
+                : `<button class="text-button detail-cut" data-proof-product="${p.id}">${icon('sun', 16)} دیدن چاپ روی این جنس ${icon('arrow', 15)}</button>`}
           </div>
         </div>`, 'product-modal');
     const revision = modalRevision, assets = world?.assets;
@@ -455,20 +484,50 @@ async function openPDF(id: string) { const b = booths().find(b => b.id === id); 
 catch {
     toast('کاتالوگ خوانده نشد.');
 } }
-function showGallery() {
-    const first = GALLERY[0];
+function galleryCaption(view: GalleryView) {
+    const profile = MATERIAL_PROFILES[view.id as MaterialProfileId];
+    return `<div><strong id="gallery-title">${view.title}</strong><p id="gallery-description">${view.detail}</p></div>
+        ${profile ? `<button class="secondary-button" data-product="${profile.lead}">${icon('cube', 16)} مدل سه‌بعدی</button>` : ''}
+        <button data-action="gallery-zoom" class="secondary-button" aria-pressed="false">${icon('search', 16)} بزرگ‌نمایی</button>
+        <a class="text-button" id="gallery-download" download="Kaghaz-${view.id}.webp" href="${view.url}">${icon('download', 16)} تصویر کامل</a>`;
+}
+function showGallery(id?: string) {
+    const first = GALLERY.find(view => view.id === id) || GALLERY[0];
     openModal(`${modalHead('Blender · Cycles', 'گالری پاساژ و جنس')}
         <div class="render-gallery">
-          <figure class="gallery-figure"><div class="gallery-stage"><img class="review-image" src="${first.url}" alt="${first.detail}" /></div><figcaption class="gallery-caption"><div><strong id="gallery-title">${first.title}</strong><p id="gallery-description">${first.detail}</p></div><button data-action="gallery-zoom" class="secondary-button" aria-pressed="false">${icon('search', 16)} بزرگ‌نمایی</button><a class="text-button" id="gallery-download" download="Kaghaz-${first.id}.webp" href="${first.url}">${icon('download', 16)} تصویر کامل</a></figcaption></figure>
-          <div class="review-tabs" aria-label="قاب‌ها">${GALLERY.map((view, index) => `<button data-review="${view.id}" class="${index === 0 ? 'active' : ''}" aria-pressed="${index === 0}">${view.title}</button>`).join('')}</div>
-        </div>`, 'gallery-modal');
+          <figure class="gallery-figure">
+            <div class="gallery-stage" tabindex="0" aria-label="نمای رندر"><img class="review-image" src="${first.thumb}" data-full="${first.url}" data-thumb="${first.thumb}" alt="${first.detail}" /></div>
+            <figcaption class="gallery-caption" id="gallery-caption">${galleryCaption(first)}</figcaption>
+          </figure>
+          <div class="review-tabs gallery-rail" aria-label="قاب‌ها">${GALLERY.map(view => `<button data-review="${view.id}" aria-pressed="${view.id === first.id}">
+            <img src="${view.thumb}" alt="" loading="lazy" decoding="async" /><span>${view.title}</span></button>`).join('')}</div>
+        </div>
+        <details class="gallery-archive"><summary>رندرهای بررسی کالا از نسخه‌های قبلی</summary>
+          <div>${GALLERY_ARCHIVE.map(view => `<a href="${view.url}" target="_blank" rel="noopener">${view.title} ${icon('arrow', 14)}</a>`).join('')}</div>
+        </details>`, 'gallery-modal v6-gallery');
+    modal.querySelector('[data-review][aria-pressed=true]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+function selectGalleryFrame(view: GalleryView) {
+    const stage = modal.querySelector<HTMLElement>('.gallery-stage')!;
+    const img = stage.querySelector<HTMLImageElement>('.review-image')!;
+    stage.classList.remove('zoomed');
+    stage.scrollTo(0, 0);
+    img.dataset.full = view.url;
+    img.dataset.thumb = view.thumb;
+    img.src = view.thumb;
+    img.alt = view.detail;
+    el('gallery-caption').innerHTML = galleryCaption(view);
+    for (const button of modal.querySelectorAll<HTMLButtonElement>('[data-review]')) {
+        button.setAttribute('aria-pressed', String(button.dataset.review === view.id));
+    }
 }
 function showStation(id:StationId,product?:Product) {
     const place=HALL.stations[id],floor=levelName(place.level as Level);
     const footer=`<div class="lab-footer">${world?`<button class="text-button" data-visit-station="${id}">${icon('location',16)} رفتن به میز در پاساژ</button>`:''}
         <button class="text-button" data-action="all-stations">${icon('grid',16)} کارگاه‌های پاساژ</button></div>`;
     if(id==='samples'){
-        const cards=['a4-80','gloss-135','box-mail','kraft-roll'].map(key=>products().find(item=>item.id===key)!);
+        const cards = ['a4-80', ...PROFILE_IDS.map(key => MATERIAL_PROFILES[key].lead)]
+            .map(key => PRODUCTS.find(item => item.id === key)!);
         openModal(`${modalHead(floor,place.label)}<div class="lab-samples">${cards.map(p=>`<article>
             <button data-product="${p.id}" class="sample-art">${productDisplay(p)}</button><h3>${esc(p.name)}</h3>
             <span>${number(p.grammage)} گرم بر مترمربع</span><div><button class="secondary-button" data-product="${p.id}">بررسی جنس</button><button class="icon-button" data-proof-product="${p.id}" title="نور و چاپ" aria-label="نور و چاپ ${esc(p.name)}">${icon('sun',18)}</button></div>
@@ -602,6 +661,7 @@ app.addEventListener('click', async (event) => {
     }
     if (target.dataset.catalog) {
         selectedBooth = target.dataset.catalog;
+        profileFilter = undefined;
         setView('catalog');
         return;
     }
@@ -695,22 +755,19 @@ app.addEventListener('click', async (event) => {
         });
         return;
     }
+    if (target.dataset.showRender) {
+        showGallery(target.dataset.showRender);
+        return;
+    }
+    if (target.dataset.profileFilter) {
+        const id = target.dataset.profileFilter;
+        profileFilter = Object.hasOwn(MATERIAL_PROFILES, id) ? id as MaterialProfileId : undefined;
+        renderProducts();
+        return;
+    }
     if (target.dataset.review) {
         const view = GALLERY.find(item => item.id === target.dataset.review);
-        if (!view) return;
-        const img = modal.querySelector<HTMLImageElement>('.review-image')!;
-        img.src = view.url;
-        img.alt = view.detail;
-        el('gallery-title').textContent = view.title;
-        el('gallery-description').textContent = view.detail;
-        const link = el<HTMLAnchorElement>('gallery-download');
-        link.href = view.url;
-        link.download = `Kaghaz-${view.id}.webp`;
-        modal.querySelectorAll<HTMLButtonElement>('[data-review]').forEach(button => {
-            const selected = button.dataset.review === view.id;
-            button.classList.toggle('active', selected);
-            button.setAttribute('aria-pressed', String(selected));
-        });
+        if (view) selectGalleryFrame(view);
         return;
     }
     if (target.dataset.shot) {
@@ -744,7 +801,11 @@ app.addEventListener('click', async (event) => {
         case 'cut':
             showCut(); break;
         case 'gallery-zoom': {
-            const zoomed = modal.querySelector('.gallery-stage')?.classList.toggle('zoomed') || false;
+            const stage = modal.querySelector<HTMLElement>('.gallery-stage')!;
+            const img = stage.querySelector<HTMLImageElement>('.review-image')!;
+            const zoomed = stage.classList.toggle('zoomed');
+            img.src = (zoomed ? img.dataset.full : img.dataset.thumb)!;
+            if (!zoomed) stage.scrollTo(0, 0);
             target.setAttribute('aria-pressed', String(zoomed));
             target.innerHTML = `${icon('search', 16)} ${zoomed ? 'نمای کامل' : 'بزرگ‌نمایی'}`;
             break;
@@ -757,6 +818,11 @@ app.addEventListener('click', async (event) => {
         }
         case 'view-market':
             setView('market');
+            break;
+        case 'specialty-catalog':
+            clearFilters();
+            setView('catalog');
+            el('material-filters').scrollIntoView({ block: 'nearest' });
             break;
         case 'view-catalog':
             setView('catalog');
@@ -862,7 +928,7 @@ app.addEventListener('click', async (event) => {
             }
             break;
         case 'export-workspace':
-            download('Kaghaz-Workspace-v5.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+            download('Kaghaz-Workspace-v6.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
             toast('فایل پشتیبان شامل داده‌هاست؛ مدل و PDF را جدا نگه دارید.');
             break;
         case 'restore-workspace':

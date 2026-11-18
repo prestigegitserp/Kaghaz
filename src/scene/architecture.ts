@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { HALL, STATION_IDS } from '../domain/hall.ts';
 import { Batch, softContact } from './batch.ts';
+import { STATION_SPECIMENS } from '../domain/material-profiles.ts';
 import type { MaterialLibrary } from './materials.ts';
 
 export const STOCK_COLORS = ['#396477','#a95043','#638172','#ac8054','#5d6386','#916879','#d4c4a2'];
@@ -34,6 +35,12 @@ export function createArchitecture(library:MaterialLibrary) {
         batch.box(m.plaster,[side*(width/2-.107),3.77,0],[.215,7.54,depth],[],1,false,false);
         batch.box(stripe,[side*2.425,.006,-.01],[.064,.017,28.2],[],.84,false,false);
         batch.box(metal,[side*(width/2-.227),.155,0],[.148,.31,depth],[],.9,true);
+        batch.box(metal,[side*2.97,7.17,0],[.084,.043,31.70],[],1,false,false);
+        batch.box(m.lamp,[side*2.92,7.143,0],[.036,.023,31.56],[],1,false,false);
+        for (let z = -10.11; z < 13.2; z += 3.59) {
+            batch.box(m.lamp,[side*(f+.104),h-.271,z],[.038,.023,3.51],[],1,false,false);
+            batch.box(guard,[side*2.62,-.002,z],[.034,.014,3.50],[],.89,false,false);
+        }
         for (let z=-12.02;z<14.5;z+=3.21){
             batch.box(beam,[side*2.82,1.62,z],[.142,3.27,.206],[],1,true);
             batch.box(guard,[side*2.82,.112,z],[.159,.231,.22],[],.9,true);
@@ -65,6 +72,11 @@ export function createArchitecture(library:MaterialLibrary) {
         batch.box(beam,[0,7.227,z],[width,.166,.124],[],1,false,false);
         batch.box(m.lamp,[0,7.151,z+.18],[6.38,.035,.088],[],1.03,false,false);
     }
+    for (let i=0;i<12;i++)
+        batch.box(beam,[0,7.23,14.75-i*2.685],[5.78,.102,2.663],[],.99,false,false);
+    batch.box(metal,[0,.004,13.38],[2.83,.018,.162],[],.87,true);
+    for(let slot=0;slot<65;slot++)
+        batch.box(m.dark,[-1.33+slot*.0416,.014,13.38],[.012,.002,.117],[],.91,false);
     batch.box(m.plaster,[0,3.57,-15.43],[width,7.16,.29],[],.86,false,false);
     batch.box(dark,[0,5.46,-15.224],[5.40,1.1,.13],[],1,true);
     const sign=new T.Mesh(new T.PlaneGeometry(5.21,.89),library.sign('پاساژ کاغذ بهارستان','خیابان ظهیرالاسلام · تهران','#2f574a'));
@@ -99,9 +111,13 @@ export function createArchitecture(library:MaterialLibrary) {
         name.position.set(x+front*(w*.5-.041),y+.685,z);
         name.rotation.y=front*Math.PI/2;
         root.add(name);
+        const specimens=STATION_SPECIMENS[id] || [];
+        for (const {offset} of specimens)
+            batch.box(m.dark,[x,y+1.048,z+offset],[.59,.008,.43],[],.83,false);
         for(let i=0;i<(id==='samples'?7:5);i++){
             const color=library.color(STOCK_COLORS[(i+spot.level)%STOCK_COLORS.length]);
-            const zz=z+(i-2.3)*.186;
+            const offset=(i-2.3)*.186, zz=z+offset;
+            if (specimens.some(specimen => Math.abs(specimen.offset-offset)<.215)) continue;
             const block = id==='unwrap' || id==='pallet' ? .103 : .012;
             batch.box(color,[x+(i%2-.5)*.15,y+1.05+block/2,zz],[.36,block,.156],[0,.18*(i-2),0],.97,true);
             if(id==='samples')

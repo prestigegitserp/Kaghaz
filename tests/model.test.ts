@@ -6,8 +6,8 @@ test('Persian search matches Arabic forms, ZWNJ, Persian numerals and multiple t
     assert.equal(normalize('كاغذِ يک ۸۰'), 'کاغذ یک 80');
     assert.ok(searchProducts(PRODUCTS, BOOTHS, 'كاغذ ٨٠').some(p => p.id === 'a4-80'));
     assert.ok(searchProducts(PRODUCTS, BOOTHS, 'سرای سپيد A4').some(p => p.id === 'a4-80'));
-    assert.equal(searchProducts(PRODUCTS, BOOTHS, '', 'creative').length, 6);
-    assert.equal(searchProducts(PRODUCTS, BOOTHS, '', 'all', 'sepid').length, 3);
+    assert.equal(searchProducts(PRODUCTS, BOOTHS, '', 'creative').length, 12);
+    assert.equal(searchProducts(PRODUCTS, BOOTHS, '', 'all', 'sepid').length, 6);
 });
 test('quantity accepts local digits, bounds invalid input, and preserves minimum order', () => {
     assert.equal(quantity('۱۲۳'), 123);

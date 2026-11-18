@@ -157,7 +157,10 @@ export class MaterialLibrary {
         this.add('darkwood', { color: '#513c2a', roughness: .79 });
         this.add('plaster', { color: '#e5dac2', map: noise, roughness: .97, bumpMap: noise, bumpScale: .01 });
         this.add('brick', { map: brick, roughness: .97, bumpMap: brick, bumpScale: .025 });
-        this.add('floor', { map: floor, color: '#d6cbb7', roughness: .72, bumpMap: floor, bumpScale: .018 });
+        const ceramic = new T.MeshPhysicalMaterial({ map: floor, color: '#d6cbb7', roughness: .73,
+            bumpMap: floor, bumpScale: .008, clearcoat: .29, clearcoatRoughness: .26 });
+        this.materials.floor = ceramic;
+        this.owned.add(ceramic);
         this.add('metal', { color: '#38473f', roughness: .61, metalness: .52 });
         this.add('brass', { color: '#ae8d51', roughness: .48, metalness: .7 });
         this.add('rubber', { color: '#2b2d27', roughness: .92 });
@@ -183,8 +186,9 @@ export class MaterialLibrary {
             const material = this.materials[key];
             material.userData.metricUV = tile;
             const base = key==='floor' ? 'v5/materials/tile' : `v4/materials/${key}`;
+            const color = key === 'plaster' ? 'v6/materials/plaster-color.webp' : `${base}-color.webp`;
 
-            load(`${base}-color.webp`, true, texture => {
+            load(color, true, texture => {
                 material.color.set('#ffffff');
                 material.map = texture;
                 material.bumpMap = null;
@@ -192,13 +196,13 @@ export class MaterialLibrary {
             });
             load(`${base}-normal.webp`, false, texture => {
                 material.normalMap = texture;
-                material.normalScale.setScalar(key === 'wood' ? .47 : .28);
+                material.normalScale.setScalar(key === 'wood' ? .47 : key === 'plaster' ? .15 : .36);
                 material.needsUpdate = true;
             });
             load(`${base}-arm.webp`, false, texture => {
                 material.roughness = 1;
                 material.roughnessMap = material.aoMap = texture;
-                material.aoMapIntensity = .7;
+                material.aoMapIntensity = key === 'plaster' ? .30 : .80;
                 material.needsUpdate = true;
             });
         }
@@ -221,8 +225,8 @@ export class MaterialLibrary {
                 stock.needsUpdate=true;
             });
         }
-        this.add('shop-glass',{color:'#d2deb7',transparent:true,
-            opacity:.115,roughness:.15,metalness:.06,side:T.DoubleSide,depthWrite:false});
+        this.add('shop-glass',{color:'#dbecdf',transparent:true,
+            opacity:.115,roughness:.11,metalness:.21,side:T.DoubleSide,depthWrite:false});
         const alternateWrapper = this.add('warm-ream', { map: label, roughness: .62 });
         load('v4/materials/wrapper-warm.webp', true, texture => {
             alternateWrapper.map = texture;

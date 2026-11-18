@@ -361,40 +361,49 @@ def detail():
     g.area('Warehouse door cool fill',(1.44,-1.3,1.65),(0,0,.52),69,1.87,(.87,.95,1))
 
 
-parser=argparse.ArgumentParser()
-parser.add_argument('--frames',nargs='*',default=['passage','store','balcony','stock'])
-parser.add_argument('--samples',type=int,default=64)
-parser.add_argument('--scale',type=int,default=100)
-parser.add_argument('--no-export',action='store_true')
-args=parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
-for id,build in [('wrapped-stock-pallet',bundle_artifact),('loaded-paper-cart',trolley_artifact),('counter-accessories',till_artifact)]:
-    register_asset(id,build,not args.no_export)
-for i in range(8):
-    register_asset(f'shelf-{i}',lambda k=i:carton_item(0,0,0,k,.39,.43,.20),False)
-if any(key!='stock' for key in args.frames):
-    passage()
-RENDERS.mkdir(parents=True,exist_ok=True)
-scene=g.scene
-scene.cycles.samples=args.samples
-scene.cycles.adaptive_threshold=.047
-scene.render.resolution_percentage=args.scale
-scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.55,.65,.82,1)
-scene.world.node_tree.nodes['Background'].inputs[1].default_value=.25
-scene.view_settings.look='AgX - Medium High Contrast'
-shots={
-    'passage':((.36,-13.94,1.78),(-.26,-3.19,2.76),24,(1536,1000)),
-    'store':((.55,-9.00,1.79),(4.6,-10.75,1.46),26,(1440,965)),
-    'balcony':((-2.13,-9.34,5.48),(0,6.34,4.46),26,(1440,960)),
-    'stock':((1.61,-2.17,1.42),(-.14,.025,.56),54,(1280,880)),
-}
-for key in args.frames:
-    if key=='stock':
-        detail()
-    eye,target,lens,resolution=shots[key]
-    scene.camera.location=eye
-    scene.camera.rotation_euler=(Vector(target)-scene.camera.location).to_track_quat('-Z','Y').to_euler()
-    scene.camera.data.lens=lens
-    scene.render.resolution_x,scene.render.resolution_y=resolution
-    scene.render.filepath=str(RENDERS/f'{key}.png')
-    bpy.ops.render.render(write_still=True)
-    print('V5_RENDER_READY',key,flush=True)
+def register_stock(export=False):
+    for id,build in [('wrapped-stock-pallet',bundle_artifact),('loaded-paper-cart',trolley_artifact),('counter-accessories',till_artifact)]:
+        register_asset(id,build,export)
+    for i in range(8):
+        register_asset(f'shelf-{i}',lambda k=i:carton_item(0,0,0,k,.39,.43,.20),False)
+
+
+def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--frames',nargs='*',default=['passage','store','balcony','stock'])
+    parser.add_argument('--samples',type=int,default=64)
+    parser.add_argument('--scale',type=int,default=100)
+    parser.add_argument('--no-export',action='store_true')
+    args=parser.parse_args(sys.argv[sys.argv.index('--')+1:] if '--' in sys.argv else [])
+    register_stock(not args.no_export)
+    if any(key!='stock' for key in args.frames):
+        passage()
+    RENDERS.mkdir(parents=True,exist_ok=True)
+    scene=g.scene
+    scene.cycles.samples=args.samples
+    scene.cycles.adaptive_threshold=.047
+    scene.render.resolution_percentage=args.scale
+    scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.55,.65,.82,1)
+    scene.world.node_tree.nodes['Background'].inputs[1].default_value=.25
+    scene.view_settings.look='AgX - Medium High Contrast'
+    shots={
+        'passage':((.36,-13.94,1.78),(-.26,-3.19,2.76),24,(1536,1000)),
+        'store':((.55,-9.00,1.79),(4.6,-10.75,1.46),26,(1440,965)),
+        'balcony':((-2.13,-9.34,5.48),(0,6.34,4.46),26,(1440,960)),
+        'stock':((1.61,-2.17,1.42),(-.14,.025,.56),54,(1280,880)),
+    }
+    for key in args.frames:
+        if key=='stock':
+            detail()
+        eye,target,lens,resolution=shots[key]
+        scene.camera.location=eye
+        scene.camera.rotation_euler=(Vector(target)-scene.camera.location).to_track_quat('-Z','Y').to_euler()
+        scene.camera.data.lens=lens
+        scene.render.resolution_x,scene.render.resolution_y=resolution
+        scene.render.filepath=str(RENDERS/f'{key}.png')
+        bpy.ops.render.render(write_still=True)
+        print('V5_RENDER_READY',key,flush=True)
+
+
+if __name__ == '__main__':
+    main()
