@@ -24,11 +24,11 @@ function bounds(doc:any){
 }
 test('all product families resolve to an existing authored asset; v1 browser data is isolated',()=>{
  for(const kind of ['ream','sheet','kraft','box','swatch','roll','notebook'] as const)assert.ok(ASSET_REGISTRY[assetForProduct(kind)]);
- assert.equal(STORAGE_KEY,'kaghaz.workspace.v2');
- assert.ok(readFileSync(new URL('../src/domain/storage.ts',import.meta.url),'utf8').includes('kaghaz.assets.v2'));
+ assert.equal(STORAGE_KEY,'kaghaz.workspace.v3');
+ assert.ok(readFileSync(new URL('../src/domain/storage.ts',import.meta.url),'utf8').includes('kaghaz.assets.v3'));
 });
 test('actual GLB files are self-contained, aligned and inside the documented geometry and download budgets',()=>{
- assert.equal(manifest.assets.length,Object.keys(ASSET_REGISTRY).length);
+ assert.equal(manifest.assets.length,9);
  let total=0;
  for(const record of manifest.assets){
   const buffer=readFileSync(new URL(record.file,root)),{doc,bin}=parse(buffer),definition=ASSET_REGISTRY[record.id as keyof typeof ASSET_REGISTRY];

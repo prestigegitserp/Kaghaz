@@ -1,0 +1,97 @@
+{
+  "version": 3,
+  "assets": [
+    {
+      "id": "carton-open",
+      "file": "models/carton-open.glb",
+      "units": "meters",
+      "bytes": 528044,
+      "sourceBytes": 3771096,
+      "triangles": 6056,
+      "sha256": "a2e6bb8183f4ad274754f3afd038acc1fa42c4f99ee046486a3ce7b03310c4a7"
+    },
+    {
+      "id": "kraft-roll",
+      "file": "models/kraft-roll.glb",
+      "units": "meters",
+      "bytes": 449216,
+      "sourceBytes": 2444676,
+      "triangles": 2532,
+      "sha256": "1cefb8662f744f632546f7cf8ba5bb05a97793befed75c0766cdd9e3035b6b5d"
+    },
+    {
+      "id": "paper-bundle",
+      "file": "models/paper-bundle.glb",
+      "units": "meters",
+      "bytes": 248780,
+      "sourceBytes": 2031092,
+      "triangles": 1664,
+      "sha256": "3139bd6bb87c89fbd7575b3f3fa880c6c98931bf931bab877912723e78b8598e"
+    },
+    {
+      "id": "paper-ream-open",
+      "file": "models/paper-ream-open.glb",
+      "units": "meters",
+      "bytes": 432448,
+      "sourceBytes": 2656484,
+      "triangles": 10236,
+      "sha256": "c07e5665bb58f532ce168635d5e2482b2e2d399d9a32ac167337c8eb8e620a6d"
+    },
+    {
+      "id": "paper-ream",
+      "file": "models/paper-ream.glb",
+      "units": "meters",
+      "bytes": 291836,
+      "sourceBytes": 2515864,
+      "triangles": 1824,
+      "sha256": "bf3daa9d67e0c40b653ef7ba5091fc30bb8e1103e59c118f965f64e7408d9d89"
+    },
+    {
+      "id": "wood-pallet",
+      "file": "models/wood-pallet.glb",
+      "units": "meters",
+      "bytes": 479192,
+      "sourceBytes": 3417996,
+      "triangles": 4320,
+      "sha256": "b93a5e452bc3002a2b92da6c03c68d07f798e5f8890f9da25d9dc1175e023cc0"
+    }
+  ],
+  "renders": [
+    {
+      "file": "renders/market.webp",
+      "width": 1440,
+      "height": 900,
+      "bytes": 214606
+    },
+    {
+      "file": "renders/workshop.webp",
+      "width": 1320,
+      "height": 880,
+      "bytes": 200854
+    },
+    {
+      "file": "renders/ream.webp",
+      "width": 1248,
+      "height": 832,
+      "bytes": 52062
+    },
+    {
+      "file": "renders/roll.webp",
+      "width": 1248,
+      "height": 832,
+      "bytes": 210874
+    },
+    {
+      "file": "renders/carton.webp",
+      "width": 1248,
+      "height": 832,
+      "bytes": 151302
+    },
+    {
+      "file": "renders/bundle.webp",
+      "width": 1248,
+      "height": 832,
+      "bytes": 164278
+    }
+  ]
+}

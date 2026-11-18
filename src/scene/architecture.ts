@@ -6,6 +6,8 @@ export function createArchitecture(m: MaterialLibrary): T.Group {
     root.name = 'baharestan-arcade';
     const b = new Batch(root);
     const floor = new T.Mesh(new T.PlaneGeometry(17, 52), m.materials.floor);
+    const uvFloor = floor.geometry.attributes.uv;
+    for (let i = 0; i < uvFloor.count; i++) uvFloor.setXY(i, uvFloor.getX(i) * (17 / 2.05), uvFloor.getY(i) * (52 / 2.05));
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(0, -.014, -5);
     floor.receiveShadow = true;
@@ -26,7 +28,7 @@ export function createArchitecture(m: MaterialLibrary): T.Group {
             for (let j = 0; j <= 40; j++) {
                 const angle = j / 40 * Math.PI;
                 vertices.push(Math.cos(angle) * span, spring + Math.sin(angle) * rise, z - iz * 7.4);
-                uv.push(j / 40 * 4, iz * 3);
+                uv.push(j / 40 * 5.4, iz * 7.4 / 1.42);
             }
         for (let j = 0; j < 40; j++) {
             const a = j, bb = j + 1, c = j + 41, d = j + 42;
@@ -54,10 +56,11 @@ export function createArchitecture(m: MaterialLibrary): T.Group {
             const rotation = Math.atan2(rise * Math.cos(angle), -span * Math.sin(angle));
             b.box(m.materials.plaster, [x, y, z + .05], [.19, .23, .62], [0, 0, rotation], .84 + (j % 5) * .025);
         }
-        // Hanging light and subtle emissive center; no point-light fan-out.
+        // Brass reflectors give the practical lights a visible source.
         b.add('cylinder', m.materials.metal, [0, 4.57, z - 3.5], [.012, .55, .012]);
-        b.add('cylinder', m.materials.brass, [0, 4.22, z - 3.5], [.18, .19, .18]);
-        b.add('sphere', m.materials.lamp, [0, 4.12, z - 3.5], [.095, .13, .095], [], 1, false);
+        b.add('cylinder', m.materials.brass, [0, 4.23, z - 3.5], [.34, .095, .34]);
+        b.add('cylinder', m.materials.metal, [0, 4.31, z - 3.5], [.081, .11, .081]);
+        b.add('sphere', m.materials.lamp, [0, 4.12, z - 3.5], [.085, .107, .085], [], 1, false);
         for (const xx of [-2.8, 2.8])
             b.box(m.materials.darkwood, [xx, 3.85, z - 3.7], [.07, .1, 7.5], [], .8);
     }

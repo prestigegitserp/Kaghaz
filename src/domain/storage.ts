@@ -34,7 +34,7 @@ export function saveState(state: SavedState): boolean {
 let dbPromise: Promise<IDBDatabase> | undefined;
 function db(): Promise<IDBDatabase> {
     return dbPromise ||= new Promise((resolve, reject) => {
-        const request = indexedDB.open('kaghaz.assets.v2', 1);
+        const request = indexedDB.open('kaghaz.assets.v3', 1);
         request.onupgradeneeded = () => request.result.createObjectStore('assets');
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error);

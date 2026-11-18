@@ -51,7 +51,7 @@ function paperPallet(b: Batch, m: MaterialLibrary, x: number, z: number, color: 
 }
 function carton(b: Batch, m: MaterialLibrary, x: number, y: number, z: number, w = .6, h = .42, d = .46, open = false): void {
     // Separate wall panels, inset top seam and actual flaps distinguish a carton from a solid brown cube.
-    const k = m.materials.kraft, t = .012;
+    const k = m.materials.cardboard, t = .012;
     b.box(k, [x, y + h * .5, z - d * .5], [w, h, t], [], .88);
     b.box(k, [x, y + h * .5, z + d * .5], [w, h, t]);
     b.box(k, [x - w * .5, y + h * .5, z], [t, h, d], [], .85);
@@ -170,7 +170,11 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
         a.box(m.materials.metal, [0, 3.09 + i * .018, -.11], [6.65, .014, .25], [], .75, false, false);
     a.box(m.materials.lamp, [0, 3.14, -1.4], [2.7, .025, .1], [], 1, false, false);
     a.box(m.materials.metal, [0, 3.19, -1.4], [2.8, .08, .14], [], .8, false, false);
-    // Three bookcases stocked with correctly scaled flat reams and cartons.
+    for (const x of [-2.45, 2.45]) {
+        a.box(m.materials.brass, [x, 2.92, .14], [.15, .11, .11], [], .82);
+        a.add('sphere', m.materials.lamp, [x, 2.835, .16], [.038, .046, .034], [], 1, false);
+    }
+    // Three bookcases stocked with flat reams and cartons.
     const shelfZ = -3.95;
     for (const x of [-2.1, 0, 2.1]) {
         for (const dx of [-.89, .89])
@@ -286,7 +290,7 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
     }else{
         for(const x of [-2.5,2.5]){const z=x>0?-3.1:-2.65;add('wood-pallet',[x,0,z]);for(let i=0;i<3;i++)add('paper-bundle',[x,.153+i*.185,z],i*.008);}
         if(booth.category==='creative'){add('swatch-fan',[-.8,.935,-1.02],-.2,2.4);add('swatch-fan',[.12,.935,-1.08],.3,1.8);}
-        else{for(let i=0;i<4;i++)add('paper-ream',[-1.15,.935+i*.056,-1.02],i*.025);add('paper-ream',[-.75,.935,-1.02],-.1);add('swatch-fan',[.1,.935,-1.03],0,1.7);}
+        else{for(let i=0;i<4;i++)add('paper-ream',[-1.15,.935+i*.056,-1.02],i*.025);add('paper-ream-open',[-.75,.935,-1.02],-.27,1.08);add('swatch-fan',[.1,.935,-1.03],0,1.7);}
     }
     return { root, inventory, booth, targets, colliders,authored,fallback,slots };
 }

@@ -13,6 +13,7 @@ import { loadGLB, disposeImported } from './importer.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AuthoredAssets, batchPlacements } from './authored.ts';
 import { LIGHTING } from './asset-registry.ts';
+import { SHOTS, type ShotId } from '../domain/review.ts';
 export interface WorldCallbacks {
     select: (boothId: string, productId?: string) => void;
     hover: (text: string, x: number, y: number) => void;
@@ -46,6 +47,10 @@ export class BazaarWorld {
     private failedAssets = new WeakSet<BoothCell>();
     private environment: T.WebGLRenderTarget;
     private fill: T.DirectionalLight;
+    private sky: T.HemisphereLight;
+    private practicals: T.PointLight[] = [];
+    private practicalCenter = Infinity;
+    private renderPaused = false;
     private controls: OrbitControls;
     private cells: BoothCell[] = [];
     private targets: Target[] = [];
@@ -88,10 +93,10 @@ export class BazaarWorld {
     private vacancies: T.Group[] = [];
     private abort = new AbortController();
     private screenshotPending = false;
-    constructor(host: HTMLElement, booths: Booth[], products: Product[], quality: Quality, callbacks: WorldCallbacks) {
+    constructor(host: HTMLElement, booths: Booth[], products: Product[], quality: Quality, callbacks: WorldCallbacks, context: WebGL2RenderingContext) {
         this.host = host;
         this.callback = callbacks;
-        this.renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+        this.renderer = new T.WebGLRenderer({ canvas: context.canvas as HTMLCanvasElement, context });
         this.renderer.outputColorSpace = T.SRGBColorSpace;
         this.renderer.toneMapping = T.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.1;
@@ -101,29 +106,33 @@ export class BazaarWorld {
         this.renderer.domElement.setAttribute('aria-label', 'بازار سه‌بعدی؛ با کشیدن تصویر نگاه کنید و با کلیدهای جهت قدم بزنید.');
         this.renderer.domElement.tabIndex = 0;
         host.prepend(this.renderer.domElement);
-        this.scene.background = new T.Color('#d5c5a6');
-        this.scene.fog = new T.Fog('#d9cdb6', 29, 76);
+        this.scene.background = new T.Color('#887d6a');
+        this.scene.fog = new T.Fog('#766b59', 31, 86);
         const environmentScene = new RoomEnvironment(), pmrem = new T.PMREMGenerator(this.renderer);
         this.environment = pmrem.fromScene(environmentScene, .04);
         this.scene.environment = this.environment.texture;
         this.scene.environmentIntensity = .28;
         environmentScene.dispose(); pmrem.dispose();
         this.materials = new MaterialLibrary(() => this.invalidate());
-        this.scene.add(new T.HemisphereLight('#e8eff0', '#9a7b53', 2.05));
+        this.sky = new T.HemisphereLight('#e5ecf3', '#7d634b', .96);
+        this.scene.add(this.sky);
         this.shadow = new T.DirectionalLight('#fff0ce', 3.5);
-        this.shadow.position.set(-3, 8, 14);
+        this.shadow.position.set(-4.4, 8.4, 15.1);
         this.shadow.target.position.set(0, 0, -5);
         this.shadow.castShadow = true;
         this.shadow.shadow.mapSize.set(2048, 2048);
         Object.assign(this.shadow.shadow.camera, { left: -14, right: 14, top: 31, bottom: -24, near: .5, far: 55 });
         this.shadow.shadow.bias = -.0002;
-        this.shadow.shadow.normalBias = .035;
+        this.shadow.shadow.normalBias = .022;
         this.scene.add(this.shadow, this.shadow.target);
-        const fill = this.fill = new T.DirectionalLight('#dce7e5', 1.1);
+        const fill = this.fill = new T.DirectionalLight('#c6dce8', .56);
         fill.position.set(6, 5, -18);
         this.scene.add(fill);
-        const warm = new T.AmbientLight('#f0d3a1', .2);
-        this.scene.add(warm);
+        for (let i = 0; i < 3; i++) {
+            const light = new T.PointLight('#ffc88e', 47, 12, 2);
+            this.scene.add(light);
+            this.practicals.push(light);
+        }
         this.scene.add(createArchitecture(this.materials));
         this.setBooths(booths, products);
         this.camera.position.set(.4, 1.95, 17.4);
@@ -220,7 +229,18 @@ export class BazaarWorld {
             else
                 this.invalidate();
         }, { signal });
-        canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); this.callback.error('نمایش سه‌بعدی متوقف شد. کاتالوگ قابل استفاده است؛ برای بازیابی صفحه را تازه کنید.'); cancelAnimationFrame(this.frame); this.frame = 0; }, { signal });
+        canvas.addEventListener('webglcontextlost', e => {
+            e.preventDefault();
+            this.renderPaused = true;
+            cancelAnimationFrame(this.frame);
+            this.frame = 0;
+            this.callback.error('ارتباط با پردازشگر تصویر قطع شد. کاتالوگ و رندرها همچنان در دسترس‌اند.');
+        }, { signal });
+        canvas.addEventListener('webglcontextrestored', () => {
+            this.renderPaused = false;
+            this.renderer.shadowMap.needsUpdate = true;
+            this.invalidate();
+        }, { signal });
     }
     private pick(x: number, y: number, select: boolean) {
         const rect = this.renderer.domElement.getBoundingClientRect();
@@ -335,9 +355,35 @@ export class BazaarWorld {
     }
     setLighting(id: string): void {
         const profile = LIGHTING.find(p => p.id === id) || LIGHTING[0];
-        this.shadow.color.set(profile.key); this.shadow.intensity = profile.intensity;
-        this.fill.color.set(profile.fill); this.renderer.toneMappingExposure = profile.exposure;
-        this.renderer.shadowMap.needsUpdate = true; this.invalidate();
+        this.shadow.color.set(profile.key);
+        this.shadow.intensity = profile.intensity;
+        this.sky.intensity = profile.ambient;
+        this.fill.color.set(profile.fill);
+        this.fill.intensity = profile.ambient * .58;
+        this.scene.environmentIntensity = profile.environment;
+        this.renderer.toneMappingExposure = profile.exposure;
+        this.practicals.forEach(light => { light.intensity = profile.practical; });
+        this.materials.materials.lamp.emissiveIntensity = profile.practical / 26;
+        this.renderer.shadowMap.needsUpdate = true;
+        this.invalidate();
+    }
+    frameShot(id: ShotId) {
+        const shot = SHOTS.find(view => view.id === id);
+        if (!shot) return;
+        this.setMode('walk');
+        this.camera.fov = shot.fov;
+        this.camera.updateProjectionMatrix();
+        this.travel(new T.Vector3(...shot.camera), new T.Vector3(...shot.target), 960);
+    }
+    private positionPracticals() {
+        const nearest = Math.round((12.5 - this.camera.position.z) / 8);
+        if (nearest === this.practicalCenter) return;
+        this.practicalCenter = nearest;
+        this.practicals.forEach((light, i) => {
+            const bay = nearest + i - 1;
+            light.visible = bay >= 0 && bay <= 6;
+            light.position.set(0, 4.01, 12.5 - bay * 8);
+        });
     }
     private async loadCell(cell: BoothCell): Promise<void> {
         if (this.pendingAssets.has(cell) || this.readyAssets.has(cell) || this.failedAssets.has(cell)) return;
@@ -432,7 +478,7 @@ export class BazaarWorld {
         this.composer?.setSize(this.width, this.height);
         this.invalidate();
     }
-    invalidate = () => { if (!this.frame && !document.hidden)
+    invalidate = () => { if (!this.frame && !document.hidden && !this.renderPaused)
         this.frame = requestAnimationFrame(this.tick); };
     private tick = (time: number) => {
         this.frame = 0;
@@ -485,6 +531,7 @@ export class BazaarWorld {
             if (cell.authored.visible !== show) this.renderer.shadowMap.needsUpdate = true;
             cell.authored.visible = show; cell.fallback.visible = !show;
         }
+        this.positionPracticals();
         if (this.composer)
             this.composer.render();
         else

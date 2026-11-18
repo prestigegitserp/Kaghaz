@@ -3,6 +3,7 @@ import '@fontsource/vazirmatn/500.css';
 import '@fontsource/vazirmatn/600.css';
 import '@fontsource/vazirmatn/700.css';
 import './style.css';
+import './v3.css';
 import { BOOTHS, PRODUCTS } from './domain/catalog.ts';
 import { CATEGORIES, boothPose, emptyState, escapeHtml as esc, inquiryText, normalize, number, parseState, quantity, searchProducts, type Booth, type Category, type Product, type Quality } from './domain/model.ts';
 import { deleteAsset, download, getAsset, loadState, putAsset, saveState } from './domain/storage.ts';
@@ -12,13 +13,13 @@ import type { BazaarWorld } from './scene/world.ts';
 import type { StudioControl } from './scene/studio.ts';
 import { LIGHTING } from './scene/asset-registry.ts';
 import { toggleComparison } from './domain/comparison.ts';
-import { REVIEW_VIEWS } from './domain/review.ts';
+import { INSPECTION_VIEWS, MATERIAL_NOTES, MATERIAL_PLATES, REVIEW_VIEWS, SHOTS, reviewImage, reviewThumb, type InspectionView, type ShotId } from './domain/review.ts';
+import { cutForm, updateCut } from './cut-ui.ts';
 let state = loadState();
 let category: Category = 'all', query = '', selectedBooth: string | undefined, favoriteFilter = false, currentView = 'market';
 let world: BazaarWorld | undefined, studioCleanup: (() => void) | undefined, mode: 'walk' | 'orbit' = 'walk', metricsVisible = false;
 let studio: StudioControl | undefined, lighting = 'day', comparison: string[] = [], tourIndex = -1;
-const reviewUrl = (index: number) => `${import.meta.env.BASE_URL}v2/renders/${REVIEW_VIEWS[index].file}`;
-const v1Url = new URL(import.meta.env.BASE_URL === './' ? '../v1/' : `${import.meta.env.BASE_URL.replace(/v2\/$/, '')}v1/`, location.href).href;
+const versionUrl = (version: 1 | 2) => new URL(`../v${version}/`, location.href).href;
 const booths = () => [...BOOTHS, ...state.customBooths];
 const products = () => [...PRODUCTS, ...state.customProducts];
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -27,13 +28,13 @@ const folded = `<svg viewBox="0 0 42 44" aria-hidden="true"><path d="M6 4h23l8 1
 app.innerHTML = `
   <header class="app-header">
     <button class="mobile-menu icon-button" data-action="sidebar" aria-label="فهرست راسته‌ها">${icon('menu')}</button>
-    <a class="brand" href="#" aria-label="کاغذ، شروع بازار"><span class="brand-mark">${folded}</span><span class="brand-name">کاغذ<small>KAGHAZ</small></span><span class="brand-line"></span><span class="brand-tag">یک راسته،<br>هزار امکان.</span></a>
-    <nav class="main-nav" aria-label="ناوبری اصلی"><button data-action="view-market" class="active">گشت‌وگذار بازار</button><button data-action="view-catalog">کاتالوگ کالاها</button><button data-action="creator">غرفهٔ من <span class="tiny-new">جدید</span></button></nav>
-    <div class="header-actions"><a class="version-link" href="${v1Url}" title="باز کردن نسخهٔ محفوظ اول">نسخهٔ اول ${icon('arrow', 13)}</a><span class="version-badge"><i></i> نسخهٔ دوم · ۲.۰</span>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
+    <a class="brand" href="#" aria-label="کاغذ، شروع بازار"><span class="brand-mark">${folded}</span><span class="brand-name">کاغذ<small>KAGHAZ</small></span></a>
+    <nav class="main-nav" aria-label="ناوبری اصلی"><button data-action="view-market" class="active">گشت‌وگذار بازار</button><button data-action="view-catalog">کاتالوگ کالاها</button><button data-action="cut">چیدمان برش</button><button data-action="creator">غرفهٔ من</button></nav>
+    <div class="header-actions"><details class="version-menu"><summary>نسخهٔ ۳</summary><div><a href="${versionUrl(2)}">نسخهٔ دوم ${icon('arrow', 13)}</a><a href="${versionUrl(1)}">نسخهٔ اول ${icon('arrow', 13)}</a></div></details>${btn('help', 'راهنمای بازار', 'info')}<button data-action="inquiry" class="inquiry-button">${icon('bag')}<span>فهرست استعلام</span><b id="inquiry-count">۰</b></button></div>
   </header>
   <div class="workspace">
     <aside class="sidebar" aria-label="راسته‌ها و غرفه‌ها">
-      <div class="sidebar-intro"><span class="eyebrow">بازار کاغذ، از نو</span><h1>به راسته خوش آمدید<span>بهارستان، تهران</span></h1><p>بگردید، جنس‌ها را بشناسید<br>و با انتخاب بهتر جلو بروید.</p></div>
+      <div class="sidebar-intro"><h1>بازار کاغذ<span>بهارستان، تهران</span></h1></div>
       <label class="search-box">${icon('search', 18)}<input id="search" type="search" placeholder="کاغذ، گرماژ یا نام غرفه…" aria-label="جستجوی کالا و غرفه" autocomplete="off"/><kbd>/</kbd></label>
       <div class="section-heading"><h2>راسته‌ها</h2><span id="total-products">${number(products().length)} کالا</span></div>
       <div id="categories" class="categories"></div>
@@ -44,12 +45,13 @@ app.innerHTML = `
       <div class="sidebar-footer"><span class="status-dot"></span> یک بازار در حال ساخته‌شدن <button data-action="help" aria-label="دربارهٔ نسخهٔ نمایشی">${icon('info', 14)}</button></div>
     </aside>
     <main class="main-content" id="main-content">
-      <div class="view-heading"><div class="breadcrumb">${icon('location', 16)}<span>بهارستان</span><span class="slash">/</span><strong id="current-heading">راستهٔ اصلی</strong></div><div class="heading-trail"><span>کاغذ، یک تجربهٔ نزدیک‌تر</span><i></i></div></div>
+      <div class="view-heading"><div class="breadcrumb">${icon('location', 16)}<span>بهارستان</span><span class="slash">/</span><strong id="current-heading">راستهٔ اصلی</strong></div><button data-action="gallery" class="text-button render-link">${icon('layers', 16)} گالری رندرها</button></div>
       <section class="scene-shell" aria-label="گردش سه‌بعدی در بازار">
-        <div id="scene" class="scene"><div class="scene-loading" id="scene-loading"><div class="loading-mark">${folded}</div><span>در حال باز کردن راسته…</span><small>جزئیات ارزش دیدن دارند.</small></div></div>
-        <div class="scene-topline"><span class="scene-location"><i></i> راستهٔ کاغذ <span>BAHARESTAN</span></span><div class="scene-tools">${btn('gallery', 'رندرهای Blender', 'layers')}${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
-        <div class="scene-editorial" id="scene-editorial"><span>یک قدم نزدیک‌تر به جنس.</span><h2>بازار،<br>از همین‌جا شروع می‌شود.</h2><p>نور را دنبال کنید. هر ویترین، یک دنیای کاغذ.</p><button data-action="start">قدم در راسته ${icon('arrow', 18)}</button></div>
+        <div id="scene" class="scene" style="--arrival: url('${reviewImage('market')}')"><div class="scene-loading" id="scene-loading"><span>در حال آماده‌سازی نمای زنده…</span></div></div>
+        <div class="scene-topline"><span class="scene-location" id="scene-location"><i></i> بازار سه‌بعدی</span><div class="scene-tools">${btn('shots', 'قاب‌های دوربین', 'film', 'aria-expanded="false" aria-controls="shot-panel"')}${btn('capture', 'ذخیرهٔ تصویر بازار', 'camera')}${btn('quality', 'کیفیت تصویر', 'settings')}${btn('fullscreen', 'تمام صفحه', 'expand')}</div></div>
+        <div class="scene-editorial" id="scene-editorial"><h2>راستهٔ کاغذ<br><mark>بهارستان</mark></h2><p>بین پیشخوان‌ها قدم بزنید و جنس کاغذ را زیر نور ببینید.</p><button data-action="start">بازدید از اولین غرفه ${icon('arrow', 18)}</button></div>
         <div class="experience-bar"><button data-action="tour">${icon('play', 14)} بازدید راهنما</button><div class="lighting-controls" aria-label="نور محیط">${LIGHTING.map(p => `<button data-lighting="${p.id}" aria-pressed="${p.id === lighting}" class="${p.id === lighting ? 'active' : ''}">${p.label}</button>`).join('')}</div></div><div id="tour-panel" class="tour-panel" hidden></div>
+        <div id="shot-panel" class="shot-panel" hidden><strong>قاب‌های دوربین</strong>${SHOTS.map(shot => `<button data-shot="${shot.id}">${shot.label} ${icon('arrow', 15)}</button>`).join('')}</div>
         <div id="hover-label" class="hover-label" hidden></div>
         <div id="booth-focus" class="booth-focus" hidden></div>
         <div class="scene-bottomline"><div class="navigation-controls"><div class="mode-switch"><button data-action="walk" class="active" aria-label="حالت قدم زدن" title="قدم زدن">${icon('walk', 18)}<span>قدم زدن</span></button><button data-action="orbit" aria-label="حالت نمای آزاد" title="نمای آزاد">${icon('orbit', 18)}<span>نمای آزاد</span></button></div>${btn('reset', 'بازگشت به ورودی', 'home')}</div><div class="walk-hint">${icon('keyboard', 17)}<span>جهت‌ها برای حرکت <b>·</b> بکشید و نگاه کنید</span></div><button data-action="map" class="map-toggle">${icon('map', 17)} نقشهٔ راسته</button></div>
@@ -57,9 +59,9 @@ app.innerHTML = `
         <div id="quality-panel" class="quality-panel" hidden></div>
         <div id="metrics" class="metrics" hidden></div>
         <div class="touch-controls" id="touch-controls"><button data-motion="0,1" aria-label="جلو">↑</button><div><button data-motion="-1,0" aria-label="چپ">←</button><button data-motion="0,-1" aria-label="عقب">↓</button><button data-motion="1,0" aria-label="راست">→</button></div></div>
-        <div class="scene-caption"><span>فضای الهام‌گرفته از بازار؛ بازسازی اندازه‌برداری‌شده نیست.</span><span>نور روز · مصالح گرم</span></div>
+        <div class="scene-caption"><span>طراحی سه‌بعدی الهام‌گرفته از بازار بهارستان</span><span id="light-caption">نور ورودی</span></div>
       </section>
-      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><div class="eyebrow">جنس را از نزدیک بشناسید</div><h2 id="catalog-title">روی پیشخوان راسته <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="product-grid" class="product-grid"></div></section>
+      <section class="catalog-section" aria-label="کاتالوگ کالاها"><div class="catalog-heading"><div><h2 id="catalog-title">روی پیشخوان راسته <span id="result-count"></span></h2></div><div class="catalog-actions"><button data-action="clear-filters" class="text-button" id="clear-filter" hidden>حذف فیلترها</button><button data-action="view-catalog" class="text-button" id="all-catalog">همهٔ کالاها ${icon('arrow', 17)}</button></div></div><div id="product-grid" class="product-grid"></div></section>
       <footer class="content-footer"><span>کاغذ <b>·</b> جایی برای دیدن، شناختن و انتخاب کردن.</span><button data-action="help">دربارهٔ این تجربه ${icon('arrow', 14)}</button></footer>
     </main>
   </div>
@@ -82,6 +84,13 @@ function renderSidebar() {
 }
 function filteredProducts() { let result = searchProducts(products(), booths(), query, category, selectedBooth); if (favoriteFilter)
     result = result.filter(p => state.favorites.includes(p.id)); return result; }
+function productDisplay(p: Product, large = false) {
+    const plate = MATERIAL_PLATES[p.kind];
+    if (!plate) return productArt(p, large);
+    const description = REVIEW_VIEWS.find(view => view.id === plate)!.detail;
+    const url = large ? reviewImage(plate) : reviewThumb(plate);
+    return `<img class="product-render" src="${url}" alt="${description}" ${large ? '' : 'loading="lazy"'} decoding="async" />`;
+}
 function renderProducts() {
     const result = filteredProducts(), visible = currentView === 'catalog' ? result : result.slice(0, 4);
     const filtered = Boolean(query || category !== 'all' || selectedBooth || favoriteFilter);
@@ -91,7 +100,7 @@ function renderProducts() {
     el('catalog-title').childNodes[0].textContent = favoriteFilter ? 'انتخاب‌های شما ' : selectedBooth ? `روی پیشخوان ${booths().find(b => b.id === selectedBooth)?.name} ` : 'روی پیشخوان راسته ';
     el('product-grid').innerHTML = visible.length ? visible.map(p => {
         const b = booths().find(b => b.id === p.boothId)!, favorite = state.favorites.includes(p.id), inq = state.inquiry.some(l => l.productId === p.id);
-        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productArt(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">نمای مفهومی</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
+        return `<article class="product-card"><div class="product-art"><button class="product-open" data-product="${p.id}" aria-label="بررسی ${esc(p.name)}">${productDisplay(p)}</button><span class="product-kind">${p.grammage ? `${number(p.grammage)} گرم` : ''}</span><button class="favorite-button ${favorite ? 'saved' : ''}" data-favorite="${p.id}" aria-pressed="${favorite}" aria-label="نشان کردن ${esc(p.name)}">${icon('heart', 17)}</button><span class="art-annotation">${MATERIAL_PLATES[p.kind] ? 'رندر جنس' : 'نمای مفهومی'}</span></div><div class="product-info"><button class="product-name" data-product="${p.id}">${esc(p.name)}</button><div class="product-meta">${esc(p.size)}<span>·</span>${esc(p.unit)}</div><div class="product-card-bottom"><button class="product-vendor" data-booth="${b.id}"><i style="background:${b.accent}"></i>${esc(b.name)}</button><button class="add-inquiry ${inq ? 'added' : ''}" data-add="${p.id}" title="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'}" aria-label="${inq ? 'در فهرست استعلام' : 'افزودن به استعلام'} ${esc(p.name)}">${icon(inq ? 'check' : 'plus', 17)}</button></div><button class="compare-product ${comparison.includes(p.id) ? 'active' : ''}" data-compare="${p.id}" aria-pressed="${comparison.includes(p.id)}">${icon('layers', 14)} ${comparison.includes(p.id) ? 'در مقایسه' : 'مقایسهٔ مشخصات'}</button></div></article>`;
     }).join('') : `<div class="empty-state">${icon(favoriteFilter ? 'heart' : 'search', 34)}<h3>${favoriteFilter ? 'هنوز چیزی نشان نکرده‌اید.' : 'کالایی با این مشخصات پیدا نشد.'}</h3><p>${favoriteFilter ? 'قلب کنار هر کالا، آن را اینجا نگه می‌دارد.' : 'نام کوتاه‌تر یا گرماژ دیگری را امتحان کنید.'}</p><button data-action="clear-filters" class="primary-button">بازگشت به راسته</button></div>`;
 }
 function setView(view: string) {
@@ -156,7 +165,7 @@ function openModal(content: string, cls = '') {
         modal.showModal();
 }
 function closeModal() { modalRevision++;studioCleanup?.(); studioCleanup = undefined; studio = undefined; modal.close(); previousFocus?.focus({ preventScroll: true }); }
-modal.addEventListener('cancel', () => { studioCleanup?.(); studioCleanup = undefined; studio = undefined; });
+modal.addEventListener('cancel', event => { event.preventDefault(); closeModal(); });
 modal.addEventListener('click', e => { if (e.target === modal) {
     const r = modal.getBoundingClientRect();
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
@@ -164,26 +173,51 @@ modal.addEventListener('click', e => { if (e.target === modal) {
 } });
 function modalHead(eyebrow: string, title: string) { return `<div class="modal-heading"><div><span class="eyebrow">${eyebrow}</span><h2>${title}</h2></div>${btn('close', 'بستن پنجره', 'close')}</div>`; }
 async function showProduct(id: string) {
-    const p = products().find(p => p.id === id);
-    if (!p)
-        return;
-    const b = booths().find(b => b.id === p.boothId)!;
-    openModal(`${modalHead('از نزدیک ببینید', esc(p.name))}<div class="product-dialog-body"><div class="studio-wrap"><div class="studio-heading"><span>${icon('cube', 16)} مدل مرجعِ جنس</span><small>${world ? 'بچرخانید · زوم کنید' : 'نمای رندرشده'}</small></div><div id="product-studio" class="product-studio">${productArt(p, true)}</div><div class="studio-options"><button data-action="explode" aria-pressed="false">${icon('layers', 15)} باز کردن اجزا</button><div>${LIGHTING.map(l => `<button data-studio-light="${l.id}" class="${l.id === 'day' ? 'active' : ''}" aria-pressed="${l.id === 'day'}">${l.label}</button>`).join('')}</div></div><div class="studio-foot">مدلِ خانوادهٔ محصول است؛ اسکن این کالا و معیار دقیق رنگ نیست.</div></div><div class="product-detail"><button class="detail-vendor" data-booth="${b.id}" data-close-first="true"><i style="background:${b.accent}"></i>${esc(b.name)} ${icon('chevron', 15)}</button><p class="product-description">${esc(p.detail)}</p><dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل نمونهٔ سفارش</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl><div class="price-note"><span class="status-dot"></span><div><strong>قیمت، پس از استعلام</strong><small>کالاها و نام غرفه‌ها در این نسخه نمونه‌اند.</small></div></div><div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(state.inquiry.some(l => l.productId === id) ? 'check' : 'plus', 18)} ${state.inquiry.some(l => l.productId === id) ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div></div></div>`, 'product-modal');
-    const revision=modalRevision;
-    modal.dataset.product = id;
-    if (!world) {
-        el('product-studio').innerHTML = `<img class="studio-render" src="${reviewUrl(p.kind === 'roll' || p.kind === 'kraft' ? 2 : 1)}" alt="رندر Blender از جزئیات خانوادهٔ محصول"/><span class="render-label">رندر Blender · تصویر ثابت</span>`;
-        modal.querySelector('.studio-options')?.setAttribute('hidden', '');
-    }
-    if (world) {
+    const p = products().find(product => product.id === id);
+    if (!p) return;
+    const b = booths().find(booth => booth.id === p.boothId)!;
+    const inInquiry = state.inquiry.some(line => line.productId === id);
+    const plate = MATERIAL_PLATES[p.kind];
+    const sheet = ['ream', 'sheet', 'kraft', 'swatch'].includes(p.kind);
+    openModal(`${modalHead('میز بررسی جنس', esc(p.name))}
+        <div class="product-dialog-body">
+          <div class="studio-wrap">
+            <div class="studio-heading"><span>${icon('cube', 16)} نمونهٔ جنس</span><small id="studio-status">${plate ? 'رندر Blender' : 'تصویر مفهومی'}</small></div>
+            <div id="product-studio" class="product-studio" data-inspection="whole">${productDisplay(p, true)}</div>
+            <div class="inspection-tools">
+              <div class="inspection-views" aria-label="نمای بررسی">${INSPECTION_VIEWS.map(v => `<button data-inspection="${v.id}" class="${v.id === 'whole' ? 'active' : ''}" aria-pressed="${v.id === 'whole'}" ${!plate && v.id !== 'whole' ? 'disabled' : ''}>${v.label}</button>`).join('')}</div>
+              <div class="inspection-sliders" id="inspection-sliders" hidden>
+                <label>${icon('sun', 16)} زاویهٔ نور <output id="angle-output">۳۴°</output><input id="studio-angle" type="range" min="7" max="76" step="1" value="34" /></label>
+                <label>${icon('layers', 16)} فاصلهٔ اجزا <output id="separation-output">۰٪</output><input id="studio-separation" type="range" min="0" max="100" step="1" value="0" /></label>
+              </div>
+            </div>
+            <p class="studio-foot">${MATERIAL_NOTES[p.kind]} مدل، نمایندهٔ خانوادهٔ کالا است.</p>
+          </div>
+          <div class="product-detail">
+            <button class="detail-vendor" data-booth="${b.id}" data-close-first="true"><i style="background:${b.accent}"></i>${esc(b.name)} ${icon('chevron', 15)}</button>
+            <p class="product-description">${esc(p.detail)}</p>
+            <dl class="specifications"><div><dt>گرماژ</dt><dd>${number(p.grammage)} گرم بر مترمربع</dd></div><div><dt>ابعاد</dt><dd>${esc(p.size)}</dd></div><div><dt>واحد سفارش</dt><dd>${esc(p.unit)}</dd></div><div><dt>حداقل سفارش نمونه</dt><dd>${number(p.minOrder)} ${esc(p.unit)}</dd></div></dl>
+            <div class="detail-actions"><button class="primary-button" data-modal-add="${p.id}">${icon(inInquiry ? 'check' : 'plus', 18)} ${inInquiry ? 'در فهرست استعلام' : 'افزودن به استعلام'}</button><button class="favorite-button detail-favorite ${state.favorites.includes(id) ? 'saved' : ''}" data-modal-favorite="${id}" aria-label="نشان کردن کالا" aria-pressed="${state.favorites.includes(id)}">${icon('heart', 20)}</button></div>
+            ${sheet ? `<button class="text-button detail-cut" data-cut-product="${p.id}">${icon('grid', 16)} محاسبهٔ چیدمان برش ${icon('arrow', 15)}</button>` : ''}
+          </div>
+        </div>`, 'product-modal');
+    const revision = modalRevision, assets = world?.assets;
+    if (!assets) return;
+    try {
         const { mountStudio } = await import('./scene/studio.ts');
-        if (modal.open && modalRevision===revision && modal.dataset.product === id && el('product-studio')) {
-            try {
-                studio = mountStudio(el('product-studio'), p, world.assets);
-                studioCleanup = () => studio?.dispose();
-            }
-            catch { /* The catalog illustration remains an accessible fallback. */ }
-        }
+        if (!modal.open || modalRevision !== revision) return;
+        const host = el('product-studio');
+        const control = mountStudio(host, p, assets, () => {
+            host.classList.add('studio-live');
+            el('studio-status').textContent = 'مدل زنده · بکشید و بزرگ کنید';
+            el('inspection-sliders').hidden = false;
+            modal.querySelectorAll<HTMLButtonElement>('[data-inspection]').forEach(button => { button.disabled = false; });
+        });
+        control.setView(host.dataset.inspection as InspectionView);
+        studio = control;
+        studioCleanup = () => control.dispose();
+    } catch {
+        // The rendered plate is already in place for browsers without a second WebGL context.
     }
 }
 function showInquiry() {
@@ -204,7 +238,7 @@ function renderMap() {
 function renderQuality() {
     el('quality-panel').innerHTML = `<div class="map-heading"><strong>کیفیت تصویر</strong>${btn('quality', 'بستن تنظیمات', 'close')}</div>${([['auto', 'خودکار', 'با توجه به دستگاه شما'], ['high', 'جزئیات بیشتر', 'سایه و عمق بیشتر'], ['balanced', 'متعادل', 'انتخاب مناسب بیشتر دستگاه‌ها'], ['low', 'سبک', 'برای موبایل و دستگاه ضعیف']] as const).map(([id, title, desc]) => `<button data-quality="${id}" class="quality-option ${state.quality === id ? 'active' : ''}"><span><strong>${title}</strong><small>${desc}</small></span>${state.quality === id ? icon('check', 16) : ''}</button>`).join('')}<button class="diagnostic-toggle" data-action="diagnostics">${icon('settings', 14)} نمایش آمار واقعی رندر</button>`;
 }
-function showHelp() { openModal(`${modalHead('خوش آمدید', 'بازار را کشف کنید.')}<div class="help-intro"><span class="help-icon">${icon('walk', 34)}</span><p>در راسته قدم بزنید؛ روی نام غرفه یا نمونهٔ روی پیشخوان بزنید و جنس را از نزدیک ببینید.</p></div><div class="help-grid"><div>${icon('walk', 23)}<strong>قدم زدن</strong><p>با جهت‌ها یا W A S D حرکت کنید. برای نگاه کردن تصویر را بکشید. روی موبایل از جهت‌های پایین تصویر استفاده کنید.</p></div><div>${icon('store', 23)}<strong>غرفه و کالا</strong><p>از فهرست سمت راست یا نقشه به غرفه بروید. «ورود به غرفه» شما را از کنار پیشخوان داخل می‌برد.</p></div><div>${icon('bag', 23)}<strong>فهرست استعلام</strong><p>محصول‌ها را انتخاب کنید، تعداد بدهید و متن یا فایل درخواست را دریافت کنید. این نسخه ارسال سفارش ندارد.</p></div><div>${icon('cube', 23)}<strong>غرفهٔ شما</strong><p>نام، محصولات، فایل PDF و مدل GLB خود را وارد کنید. داده‌ها روی همین دستگاه و مرورگر نگه داشته می‌شوند.</p></div></div><div class="demo-disclosure"><strong>حدود این نسخه</strong><p>فضا یک طراحی الهام‌گرفته از بازار است، نه اسکن واقعی بهارستان. نام غرفه‌ها و مشخصات کالاها برای نمایش هستند. خرید، احراز هویت فروشنده، قیمت زنده و ذخیرهٔ سروری در نسخهٔ اول وجود ندارد.</p></div><div class="modal-footer"><button data-action="close" class="primary-button">برویم به راسته ${icon('arrow', 17)}</button><button data-action="export-workspace" class="text-button">پشتیبان انتخاب‌های من</button></div>`, 'help-modal'); }
+function showHelp() { openModal(`${modalHead('خوش آمدید', 'بازار را کشف کنید.')}<div class="help-intro"><span class="help-icon">${icon('walk', 34)}</span><p>در راسته قدم بزنید؛ روی نام غرفه یا نمونهٔ روی پیشخوان بزنید و جنس را از نزدیک ببینید.</p></div><div class="help-grid"><div>${icon('walk', 23)}<strong>قدم زدن</strong><p>با جهت‌ها یا W A S D حرکت کنید. برای نگاه کردن تصویر را بکشید. روی موبایل از جهت‌های پایین تصویر استفاده کنید.</p></div><div>${icon('store', 23)}<strong>غرفه و کالا</strong><p>از فهرست سمت راست یا نقشه به غرفه بروید. «ورود به غرفه» شما را از کنار پیشخوان داخل می‌برد.</p></div><div>${icon('bag', 23)}<strong>فهرست استعلام</strong><p>محصول‌ها را انتخاب کنید، تعداد بدهید و متن یا فایل درخواست را دریافت کنید. این نسخه ارسال سفارش ندارد.</p></div><div>${icon('cube', 23)}<strong>غرفهٔ شما</strong><p>نام، محصولات، فایل PDF و مدل GLB خود را وارد کنید. داده‌ها روی همین دستگاه و مرورگر نگه داشته می‌شوند.</p></div></div><div class="demo-disclosure"><strong>حدود این نسخه</strong><p>فضا از بازار بهارستان الهام گرفته شده و نام غرفه‌ها و کالاها برای نمایش‌اند. اطلاعات غرفهٔ شخصی، PDF و مدل روی همین مرورگر ذخیره می‌شوند.</p></div><div class="modal-footer"><button data-action="close" class="primary-button">برویم به راسته ${icon('arrow', 17)}</button><button data-action="export-workspace" class="text-button">پشتیبان انتخاب‌های من</button></div>`, 'help-modal'); }
 function showCreator(editId?: string) {
     const b = editId === 'new' ? undefined : state.customBooths.find(b => b.id === editId) || state.customBooths[0];
     const ownProducts = b ? state.customProducts.filter(p => p.boothId === b.id) : [];
@@ -353,9 +387,20 @@ async function openPDF(id: string) { const b = booths().find(b => b.id === id); 
 catch {
     toast('کاتالوگ خوانده نشد.');
 } }
-function reviewTabs() { return REVIEW_VIEWS.map((v,i)=>`<button data-review="${i}" class="${i===0?'active':''}" aria-pressed="${i===0}">${v.title}</button>`).join(''); }
 function showGallery() {
-    openModal(`${modalHead('ساخته‌شده برای کاغذ · Blender / Cycles', 'از حجم تا جنس')}<div class="render-gallery"><img class="review-image" src="${reviewUrl(0)}" alt="${REVIEW_VIEWS[0].detail}"/><div class="review-tabs">${reviewTabs()}</div></div><p class="modal-description gallery-note">این‌ها رندرهای واقعی صحنهٔ تألیف‌شده در Blender هستند. همان خانوادهٔ مدل‌ها در نمای زندهٔ بازار بارگیری می‌شوند؛ این تصاویر، اسکن بازار بهارستان یا ثبت اجرای مرورگر نیستند.</p>`, 'gallery-modal');
+    const first = REVIEW_VIEWS[0];
+    openModal(`${modalHead('Blender · Cycles', 'گالری رندرها')}
+        <div class="render-gallery">
+          <figure class="gallery-figure"><div class="gallery-stage"><img class="review-image" src="${reviewImage(first.id)}" alt="${first.detail}" /></div><figcaption class="gallery-caption"><div><strong id="gallery-title">${first.title}</strong><p id="gallery-description">${first.detail}</p></div><button data-action="gallery-zoom" class="secondary-button" aria-pressed="false">${icon('search', 16)} بزرگ‌نمایی</button><a class="text-button" id="gallery-download" download="Kaghaz-${first.id}.webp" href="${reviewImage(first.id)}">${icon('download', 16)} تصویر کامل</a></figcaption></figure>
+          <div class="review-tabs" aria-label="قاب‌ها">${REVIEW_VIEWS.map((view, index) => `<button data-review="${view.id}" class="${index === 0 ? 'active' : ''}" aria-pressed="${index === 0}">${view.title}</button>`).join('')}</div>
+        </div>`, 'gallery-modal');
+}
+function showCut(product?: Product) {
+    openModal(`${modalHead(product ? esc(product.name) : 'محاسبهٔ ورق', 'چیدمان برش')}${cutForm(product)}`, 'cut-modal');
+    const form = el<HTMLFormElement>('cut-form'), result = el('cut-result');
+    form.addEventListener('input', () => updateCut(form, result));
+    form.addEventListener('submit', event => event.preventDefault());
+    updateCut(form, result);
 }
 function renderComparisonTray() {
     comparison=comparison.filter(id=>products().some(p=>p.id===id));
@@ -496,21 +541,59 @@ app.addEventListener('click', async (event) => {
         if (next.full) toast('تا سه کالا را کنار هم مقایسه کنید.');
         renderProducts(); renderComparisonTray(); return;
     }
-    if (target.dataset.lighting) {
-        lighting = target.dataset.lighting; world?.setLighting(lighting);
-        document.querySelectorAll<HTMLButtonElement>('[data-lighting]').forEach(b => { b.classList.toggle('active', b.dataset.lighting === lighting); b.setAttribute('aria-pressed', String(b.dataset.lighting === lighting)); });
-        if (!world) toast('تغییر نور در نمای سه‌بعدی فعال است؛ تصویر رندرشده ثابت است.');
+    if (target.dataset.cutProduct) {
+        showCut(products().find(p => p.id === target.dataset.cutProduct));
         return;
     }
-    if (target.dataset.studioLight) {
-        studio?.setLight(target.dataset.studioLight);
-        modal.querySelectorAll<HTMLButtonElement>('[data-studio-light]').forEach(b => { const active=b.dataset.studioLight===target.dataset.studioLight;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active)); }); return;
+    if (target.dataset.lighting) {
+        lighting = target.dataset.lighting;
+        world?.setLighting(lighting);
+        el('light-caption').textContent = LIGHTING.find(p => p.id === lighting)?.label || '';
+        document.querySelectorAll<HTMLButtonElement>('[data-lighting]').forEach(button => {
+            const selected = button.dataset.lighting === lighting;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+        return;
     }
-    if (target.dataset.review !== undefined) {
-        const index = Math.max(0, Math.min(2, Number(target.dataset.review)||0));
-        const gallery = target.closest('.render-gallery, .render-fallback');
-        const img=gallery?.querySelector<HTMLImageElement>('.review-image');if(img){img.src=reviewUrl(index);img.alt=REVIEW_VIEWS[index].detail;}
-        gallery?.querySelectorAll<HTMLButtonElement>('[data-review]').forEach(b=>{const active=b.dataset.review===String(index);b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));}); return;
+    if (target.dataset.inspection) {
+        const view = target.dataset.inspection as InspectionView;
+        el('product-studio').dataset.inspection = view;
+        studio?.setView(view);
+        modal.querySelectorAll<HTMLButtonElement>('[data-inspection]').forEach(button => {
+            const selected = button.dataset.inspection === view;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+        return;
+    }
+    if (target.dataset.review) {
+        const view = REVIEW_VIEWS.find(item => item.id === target.dataset.review);
+        if (!view) return;
+        const img = modal.querySelector<HTMLImageElement>('.review-image')!;
+        img.src = reviewImage(view.id);
+        img.alt = view.detail;
+        el('gallery-title').textContent = view.title;
+        el('gallery-description').textContent = view.detail;
+        const link = el<HTMLAnchorElement>('gallery-download');
+        link.href = reviewImage(view.id);
+        link.download = `Kaghaz-${view.id}.webp`;
+        modal.querySelectorAll<HTMLButtonElement>('[data-review]').forEach(button => {
+            const selected = button.dataset.review === view.id;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', String(selected));
+        });
+        return;
+    }
+    if (target.dataset.shot) {
+        world?.frameShot(target.dataset.shot as ShotId);
+        mode = 'walk';
+        updateMode();
+        el('scene-editorial').classList.add('dismissed');
+        el('booth-focus').hidden = true;
+        el('shot-panel').hidden = true;
+        app.querySelector('[data-action="shots"]')?.setAttribute('aria-expanded', 'false');
+        return;
     }
     if (target.dataset.tourMove) { tourIndex = Math.max(0, Math.min(3, tourIndex + Number(target.dataset.tourMove)));showTourStop(); return; }
     const action = target.dataset.action;
@@ -525,8 +608,19 @@ app.addEventListener('click', async (event) => {
             tourIndex=0;showTourStop();break;
         case 'end-tour':
             tourIndex=-1;el('tour-panel').hidden=true;break;
-        case 'explode': {
-            const value=target.getAttribute('aria-pressed')!=='true';studio?.setExploded(value);target.setAttribute('aria-pressed',String(value));target.classList.toggle('active',value);break;
+        case 'cut':
+            showCut(); break;
+        case 'gallery-zoom': {
+            const zoomed = modal.querySelector('.gallery-stage')?.classList.toggle('zoomed') || false;
+            target.setAttribute('aria-pressed', String(zoomed));
+            target.innerHTML = `${icon('search', 16)} ${zoomed ? 'نمای کامل' : 'بزرگ‌نمایی'}`;
+            break;
+        }
+        case 'shots': {
+            const panel = el('shot-panel');
+            panel.hidden = !panel.hidden;
+            target.setAttribute('aria-expanded', String(!panel.hidden));
+            break;
         }
         case 'view-market':
             setView('market');
@@ -633,7 +727,7 @@ app.addEventListener('click', async (event) => {
             }
             break;
         case 'export-workspace':
-            download('Kaghaz-Workspace-v1.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
+            download('Kaghaz-Workspace-v3.json', new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
             toast('فایل پشتیبان شامل داده‌هاست؛ مدل و PDF را جدا نگه دارید.');
             break;
         case 'restore-workspace':
@@ -642,6 +736,16 @@ app.addEventListener('click', async (event) => {
     }
 });
 function updateMode() { document.querySelector('[data-action="walk"]')?.classList.toggle('active', mode === 'walk'); document.querySelector('[data-action="orbit"]')?.classList.toggle('active', mode === 'orbit'); el('touch-controls').classList.toggle('orbit-hidden', mode === 'orbit'); }
+modal.addEventListener('input', ({ target }) => {
+    if (!(target instanceof HTMLInputElement)) return;
+    if (target.id === 'studio-angle') {
+        studio?.setAngle(target.valueAsNumber);
+        el('angle-output').textContent = `${number(target.valueAsNumber)}°`;
+    } else if (target.id === 'studio-separation') {
+        studio?.setSeparation(target.valueAsNumber / 100);
+        el('separation-output').textContent = `${number(target.valueAsNumber)}٪`;
+    }
+});
 let searchTimer: ReturnType<typeof setTimeout>;
 el('search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { query = el<HTMLInputElement>('search').value; selectedBooth = undefined; favoriteFilter = false; if (query)
     setView('catalog'); renderSidebar(); renderProducts(); }, 130); });
@@ -743,7 +847,12 @@ renderProducts();
 renderQuality();
 updateCounts();
 async function startWorld() {
+    let context: WebGL2RenderingContext | null = null;
     try {
+        context = document.createElement('canvas').getContext('webgl2', {
+            antialias: true, alpha: false, powerPreference: 'high-performance',
+        });
+        if (!context) throw new Error('WebGL2 unavailable');
         await document.fonts.ready;
         const { BazaarWorld } = await import('./scene/world.ts');
         world = new BazaarWorld(el('scene'), booths(), products(), state.quality, {
@@ -756,19 +865,22 @@ async function startWorld() {
             pose: (x, z) => { const dot = document.getElementById('map-player'); dot?.setAttribute('cx', String(90 + x * 5.7)); dot?.setAttribute('cy', String(267 - (17.4 - z) * 5.75)); },
             metrics: m => { el('metrics').textContent = `${m.draws} draws · ${number(Math.round(m.triangles / 1000))}k tris · CPU ${m.frameMs.toFixed(1)}ms · DPR ${m.dpr} · ${m.mode}`; },
             error: message => toast(message),
-        });
+        }, context);
         el('scene-loading').remove();world.setLighting(lighting);
         await restoreModels();
     }
     catch (error) {
+        context?.getExtension('WEBGL_lose_context')?.loseContext();
         el('scene-loading')?.remove();
+        el('scene-location').textContent = 'رندر Blender';
         el('scene').classList.add('is-fallback');
-        el('scene').insertAdjacentHTML('beforeend', `<div class="render-fallback"><img class="review-image" src="${reviewUrl(0)}" alt="${REVIEW_VIEWS[0].detail}"/><div class="fallback-copy"><span class="eyebrow">رندر واقعی Blender · تصویر ثابت</span><strong>جنس را از نزدیک ببینید.</strong><p>نمای زندهٔ سه‌بعدی به WebGL2 نیاز دارد.<br>کاتالوگ، مقایسه و ساخت غرفه در دسترس‌اند.</p><div class="review-tabs">${reviewTabs()}</div><button data-action="view-catalog" class="primary-button">دیدن کالاها ${icon('arrow', 16)}</button></div></div>`);
         document.querySelector('.scene-shell')?.classList.add('fallback-shell');
-        document.querySelectorAll<HTMLButtonElement>('[data-action="walk"],[data-action="orbit"],[data-action="capture"],[data-lighting]').forEach(button => {button.disabled=true;button.title='این کنترل به نمای زندهٔ WebGL2 نیاز دارد.';});
-        el('scene-editorial').classList.add('dismissed');
-        toast('برای نمایش سه‌بعدی مرورگر دارای WebGL2 لازم است.');
-        console.error(error);
+        for (const button of app.querySelectorAll<HTMLButtonElement>('[data-action="walk"],[data-action="orbit"],[data-action="capture"],[data-action="shots"],[data-lighting]')) {
+            button.disabled = true;
+            button.title = 'ویژهٔ نمای زندهٔ WebGL2';
+        }
+        el('scene-editorial').innerHTML = `<h2>راستهٔ کاغذ<br><mark>بهارستان</mark></h2><p>نماهای رندرشدهٔ بازار را ببینید و از کاتالوگ جنس‌ها را بررسی کنید.</p><button data-action="gallery">تماشای رندرها ${icon('arrow', 18)}</button>`;
+        if (context) console.warn('Market rendering unavailable', error);
     }
 }
 void startWorld();

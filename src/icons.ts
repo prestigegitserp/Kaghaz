@@ -18,6 +18,7 @@ const paths: Record<string, string> = {
     orbit: '<ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-35 12 12)"/><circle cx="12" cy="12" r="2.5"/>',
     settings: '<path d="M4 5h16M4 12h16M4 19h16"/><circle cx="8" cy="5" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="19" r="2"/>',
     expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
+    film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16m8-16v16M3 10h5m8 0h5M3 15h5m8 0h5"/>',
     camera: '<path d="M7 6 9 3h6l2 3h4v15H3V6Z"/><circle cx="12" cy="13" r="4"/>',
     home: '<path d="m3 10 9-7 9 7v11h-6v-8H9v8H3Z"/>',
     info: '<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>',

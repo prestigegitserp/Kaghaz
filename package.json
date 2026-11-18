@@ -1,6 +1,6 @@
 {
   "name": "kaghaz-baharestan",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,13 +12,14 @@
     "prebuild": "node scripts/prepare-assets.mjs"
   },
   "dependencies": {
-    "three": "0.180.0",
-    "@fontsource/vazirmatn": "5.2.6"
+    "@fontsource/vazirmatn": "5.2.6",
+    "three": "0.180.0"
   },
   "devDependencies": {
-    "vite": "7.1.12",
+    "@types/three": "0.180.0",
+    "playwright": "1.65.1",
     "typescript": "5.9.3",
-    "@types/three": "0.180.0"
+    "vite": "7.1.12"
   },
   "engines": {
     "node": ">=22.18.0"

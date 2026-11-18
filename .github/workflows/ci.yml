@@ -1,16 +1,19 @@
 name: Validate Kaghaz
 on:
   push:
-    branches: [v2]
+    branches: [v3]
   pull_request:
-    branches: [v2]
+    branches: [v3]
 permissions:
   contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -19,8 +22,16 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          VITE_PUBLIC_BASE: /Kaghaz/v2/
+          VITE_PUBLIC_BASE: /Kaghaz/v3/
+      - run: npx playwright install chromium
+      - run: node tests/v3-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kaghaz-v3-browser
+          path: qa
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
-          name: kaghaz-v2-dist
+          name: kaghaz-v3-dist
           path: dist
