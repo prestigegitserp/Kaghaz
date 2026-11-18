@@ -42,10 +42,10 @@ try {
     await live.goto(url);
     await live.locator('#scene canvas').waitFor({ timeout: 45_000 });
     await waitForModel;
-    await live.locator('[data-action="quality"]').click();
+    await live.locator('.scene-tools [data-action="quality"]').click();
     await live.locator('[data-action="diagnostics"]').click();
     await live.waitForFunction(() => /[1-9]\d* draws/.test(document.querySelector('#metrics').textContent));
-    await live.locator('[data-action="quality"]').click();
+    await live.locator('.scene-tools [data-action="quality"]').click();
     await live.screenshot({ path: `${output}/market-live.png` });
     await live.locator('[data-action="shots"]').click();
     await live.locator('[data-shot="counter"]').click();

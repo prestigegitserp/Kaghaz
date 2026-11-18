@@ -211,7 +211,7 @@ async function showProduct(id: string) {
             host.classList.add('studio-live');
             el('studio-status').textContent = 'مدل زنده · بکشید و بزرگ کنید';
             el('inspection-sliders').hidden = false;
-            modal.querySelectorAll<HTMLButtonElement>('[data-inspection]').forEach(button => { button.disabled = false; });
+            modal.querySelectorAll<HTMLButtonElement>('button[data-inspection]').forEach(button => { button.disabled = false; });
         });
         control.setView(host.dataset.inspection as InspectionView);
         studio = control;
@@ -560,7 +560,7 @@ app.addEventListener('click', async (event) => {
         const view = target.dataset.inspection as InspectionView;
         el('product-studio').dataset.inspection = view;
         studio?.setView(view);
-        modal.querySelectorAll<HTMLButtonElement>('[data-inspection]').forEach(button => {
+        modal.querySelectorAll<HTMLButtonElement>('button[data-inspection]').forEach(button => {
             const selected = button.dataset.inspection === view;
             button.classList.toggle('active', selected);
             button.setAttribute('aria-pressed', String(selected));
