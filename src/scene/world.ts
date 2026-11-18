@@ -50,6 +50,8 @@ export class BazaarWorld {
     private sky: T.HemisphereLight;
     private practicals: T.PointLight[] = [];
     private practicalCenter = Infinity;
+    private counterLights: T.PointLight[] = [];
+    private counterRow = Infinity;
     private renderPaused = false;
     private controls: OrbitControls;
     private cells: BoothCell[] = [];
@@ -132,6 +134,12 @@ export class BazaarWorld {
             const light = new T.PointLight('#ffc88e', 47, 12, 2);
             this.scene.add(light);
             this.practicals.push(light);
+        }
+        for (const x of [-4.68, 4.68]) {
+            const light = new T.PointLight('#ffe0ab', 20, 5.3, 2);
+            light.position.set(x, 2.98, 10);
+            this.scene.add(light);
+            this.counterLights.push(light);
         }
         this.scene.add(createArchitecture(this.materials));
         this.setBooths(booths, products);
@@ -363,6 +371,7 @@ export class BazaarWorld {
         this.scene.environmentIntensity = profile.environment;
         this.renderer.toneMappingExposure = profile.exposure;
         this.practicals.forEach(light => { light.intensity = profile.practical; });
+        this.counterLights.forEach(light => { light.intensity = profile.practical * .45; });
         this.materials.materials.lamp.emissiveIntensity = profile.practical / 26;
         this.renderer.shadowMap.needsUpdate = true;
         this.invalidate();
@@ -376,6 +385,11 @@ export class BazaarWorld {
         this.travel(new T.Vector3(...shot.camera), new T.Vector3(...shot.target), 960);
     }
     private positionPracticals() {
+        const row = T.MathUtils.clamp(Math.round((10 - this.camera.position.z) / 8), 0, 4);
+        if (row !== this.counterRow) {
+            this.counterRow = row;
+            this.counterLights.forEach(light => { light.position.z = 10 - row * 8; });
+        }
         const nearest = Math.round((12.5 - this.camera.position.z) / 8);
         if (nearest === this.practicalCenter) return;
         this.practicalCenter = nearest;

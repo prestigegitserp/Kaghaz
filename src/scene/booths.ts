@@ -149,8 +149,8 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
     let b = new Batch(inventory);
     const accent = m.color(booth.accent), r = seeded(booth.slot * 91 + 38);
     a.box(m.materials.plaster, [0, 1.85, -4.5], [7.15, 3.7, .18]);
-    a.box(m.materials.plaster, [-3.56, 1.85, -2.25], [.16, 3.7, 4.5]);
-    a.box(m.materials.plaster, [3.56, 1.85, -2.25], [.16, 3.7, 4.5]);
+    a.box(m.materials.plaster, [-3.56, 1.85, -2.70], [.16, 3.7, 3.6]);
+    a.box(m.materials.plaster, [3.56, 1.85, -2.70], [.16, 3.7, 3.6]);
     a.box(m.materials.wood, [0, .018, -2.25], [7, .035, 4.5], [], .8);
     a.box(m.materials.plaster, [0, 3.84, -2.25], [7.2, .2, 4.7]);
     a.box(m.materials.darkwood, [0, 3.03, -.06], [7.15, .16, .22]);
@@ -170,6 +170,25 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
         a.box(m.materials.metal, [0, 3.09 + i * .018, -.11], [6.65, .014, .25], [], .75, false, false);
     a.box(m.materials.lamp, [0, 3.14, -1.4], [2.7, .025, .1], [], 1, false, false);
     a.box(m.materials.metal, [0, 3.19, -1.4], [2.8, .08, .14], [], .8, false, false);
+    const standX = -2.88, standZ = -.375;
+    for (const x of [standX - .34, standX + .34])
+        a.box(m.materials.metal, [x, .52, standZ], [.032, 1.04, .54], [], .84);
+    for (const y of [.16, .49, .83]) {
+        a.box(m.materials.wood, [standX, y, standZ], [.72, .036, .55], [], .84);
+        a.box(accent, [standX, y + .018, standZ + .27], [.68, .044, .021], [], .88);
+        if (booth.category === 'packaging') {
+            carton(a, m, standX - .07, y + .027, standZ - .04, .40, .23, .37, y > .8);
+        } else if (booth.category === 'creative' || booth.category === 'board') {
+            const shades = booth.category === 'creative' ? ['#d6a979', '#ad7660', '#7d9690', '#dcd7bb'] : ['#e1dbca', '#eee9da', '#d2c7aa', '#c9c6ba'];
+            for (let i = 0; i < shades.length; i++)
+                a.box(m.color(shades[i]), [standX + (i - 1.5) * .014, y + .041 + i * .021, standZ - .022],
+                    [.58, .020, .411], [0, (r() - .5) * .06, 0], .89 + i * .027);
+        } else {
+            for (const x of [standX - .16, standX + .16])
+                for (let i = 0; i < 3; i++)
+                    ream(a, m, x + (r() - .5) * .021, y + .049 + i * .068, standZ, (r() - .5) * .075);
+        }
+    }
     for (const x of [-2.45, 2.45]) {
         a.box(m.materials.brass, [x, 2.92, .14], [.15, .11, .11], [], .82);
         a.add('sphere', m.materials.lamp, [x, 2.835, .16], [.038, .046, .034], [], 1, false);
@@ -274,8 +293,9 @@ export function createBooth(booth: Booth, products: Product[], m: MaterialLibrar
         colliders.push({ minX: point.x - d / 2, maxX: point.x + d / 2, minZ: point.z - w / 2, maxZ: point.z + w / 2, height, occludes });
     }
     collider(0, -4.5, 7.3, .28);
-    collider(-3.56, -2.25, .3, 4.5);
-    collider(3.56, -2.25, .3, 4.5);
+    collider(-3.56, -2.70, .3, 3.6);
+    collider(3.56, -2.70, .3, 3.6);
+    collider(standX, standZ, .73, .55, 1.12, false);
     collider(-.7, -1.02, 3.65, .98, .94, false);
     collider(0, -3.96, 6.5, .7, 3, false);
     collider(-2.5, -2.6, 1.2, 1.3, 1.2, false);

@@ -28,7 +28,7 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
     renderer.shadowMap.autoUpdate = false;
     renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.domElement.tabIndex = 0;
-    renderer.domElement.setAttribute('aria-label', 'مدل سه‌بعدی نمونه؛ تصویر را برای چرخش بکشید.');
+    renderer.domElement.setAttribute('aria-label', 'برای چرخاندن مدل سه‌بعدی، تصویر را بکشید.');
     const scene = new T.Scene();
     scene.background = new T.Color('#3d3c35');
     const camera = new T.PerspectiveCamera(37, 1, .008, 11);
