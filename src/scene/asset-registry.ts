@@ -44,10 +44,10 @@ export function assetForProduct(kind: ProductKind): AssetId {
 }
 
 export const LIGHTING = [
-    {id:'day',label:'نور روز',key:'#f4f5ec',fill:'#d8e6ef',exposure:1.14,
-        intensity:2.15,ambient:1.27,practical:27,environment:.46},
-    {id:'warm',label:'نور گرم',key:'#ffe0b0',fill:'#dbe8ef',exposure:1.13,
-        intensity:1.77,ambient:1.08,practical:42,environment:.42},
-    {id:'night',label:'نور ویترین',key:'#c9d7e3',fill:'#d0e0f9',exposure:1.22,
-        intensity:1.20,ambient:.86,practical:65,environment:.35},
+    {id:'day',label:'نور روز',key:'#f4f5ec',fill:'#d8e6ef',exposure:1.08,
+        intensity:1.92,ambient:1.27,practical:9,environment:.43},
+    {id:'warm',label:'نور گرم',key:'#ffe0b0',fill:'#dbe8ef',exposure:1.09,
+        intensity:1.69,ambient:1.08,practical:14,environment:.40},
+    {id:'night',label:'نور ویترین',key:'#c9d7e3',fill:'#d0e0f9',exposure:1.17,
+        intensity:1.16,ambient:.86,practical:22,environment:.35},
 ] as const;

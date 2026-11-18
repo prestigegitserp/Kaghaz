@@ -33,7 +33,8 @@ try {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     const url = process.env.KAGHAZ_QA_URL || `http://127.0.0.1:${server.address().port}${base}`;
     browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-    const context = await browser.newContext({ viewport: { width: 1440, height: 930 }, reducedMotion: 'reduce' });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    context.setDefaultTimeout(60_000);
     const live = await context.newPage();
     const errors = [], missing = [];
     live.on('pageerror', error => errors.push(error.message));
@@ -58,7 +59,12 @@ try {
     await live.locator('.scene-tools [data-action="shots"]').click();
     await live.locator('[data-shot="balcony"]').click();
     await live.waitForFunction(()=>document.querySelector('#scene').dataset.pose==='-2.06,8.46',undefined,{timeout:30_000});
-    await live.screenshot({path:`${output}/balcony-live.png`});
+    const [balconyPhoto] = await Promise.all([
+        live.waitForEvent('download'),
+        live.locator('.scene-tools [data-action="capture"]').click(),
+    ]);
+    assert.equal(balconyPhoto.suggestedFilename(), 'Kaghaz-Passage-v5.png');
+    await balconyPhoto.saveAs(`${output}/balcony-live.png`);
     await live.locator('.floor-picker [data-level="0"]').click();
     await live.waitForFunction(()=>document.querySelector('#scene').dataset.floor==='0',undefined,{timeout:30_000});
     await live.locator('[data-lighting="warm"]').click();

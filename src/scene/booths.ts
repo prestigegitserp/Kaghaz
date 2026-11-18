@@ -142,7 +142,8 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     a.box(shade,[0,2.996,-.055],[6.14,.50,.306],[],.97,true);
     a.box(anodized,[0,3.277,-.032],[6.17,.076,.332],[],.94,true);
     a.box(m.lamp,[0,2.742,.041],[5.68,.027,.038],[],.94,false,false);
-    const sign = new T.Mesh(new T.PlaneGeometry(4.49,.431),library.sign(booth.name,booth.subtitle,booth.accent));
+    const unit = ((pose.level + 1) * 100 + (booth.slot % 6) + 1).toLocaleString('fa-IR');
+    const sign = new T.Mesh(new T.PlaneGeometry(5.73,.431),library.sign(booth.name,booth.subtitle,booth.accent,unit));
     sign.position.set(0,3.004,.118);
     sign.userData.ownedGeometry = true;
     architecture.add(sign);

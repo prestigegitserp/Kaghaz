@@ -138,7 +138,7 @@ export class BazaarWorld {
         const fill = this.fill = new T.DirectionalLight('#c6dce8', .56);
         fill.position.set(6, 5, -18);
         this.scene.add(fill);
-        for(const [x,y,z] of [[-2.03,3.23,9.68],[2.29,3.14,1.94],[-2.23,6.93,7.51],[1.55,5.61,-10.03]]){
+        for(const [x,y,z] of [[-1.39,3.18,9.68],[1.48,3.14,1.94],[-1.43,6.68,7.51],[1.21,6.61,-10.03]]){
             const light=new T.PointLight('#ffefcc',27,11.2,2);
             light.position.set(x,y,z);
             this.scene.add(light);
@@ -622,7 +622,7 @@ export class BazaarWorld {
         for (const cell of this.cells) {
             const distance = cell.root.position.distanceTo(this.camera.position);
             cell.inventory.visible = distance < (this.effective === 'low' ? 19 : 36);
-            const close=distance<(this.effective==='low'?8.4:13.9);
+            const close=cell.level===this.level&&distance<(this.effective==='low'?8.4:13.9);
             if (close) void this.loadCell(cell);
             const show = close && this.readyAssets.has(cell);
             if (cell.authored.visible !== show) this.renderer.shadowMap.needsUpdate = true;

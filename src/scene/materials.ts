@@ -11,24 +11,33 @@ function canvasTexture(size: number, draw: (ctx: CanvasRenderingContext2D) => vo
     t.wrapS = t.wrapT = T.RepeatWrapping;
     return t;
 }
-export function textTexture(title: string, subtitle: string, color = '#3d5748', background = '#f2eddf'): T.CanvasTexture {
+function textTexture(title: string, subtitle: string, background: string, unit?: string): T.CanvasTexture {
     const c = document.createElement('canvas');
-    c.width = 1024;
-    c.height = 256;
+    c.width = unit ? 1280 : 1024;
+    c.height = unit ? 160 : 192;
     const ctx = c.getContext('2d')!;
     ctx.fillStyle = background;
-    ctx.fillRect(0, 0, 1024, 256);
-    ctx.fillStyle = color;
-    ctx.fillRect(34, 40, 12, 176);
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.strokeStyle = '#c7ab75';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(14, 13, c.width - 28, c.height - 26);
     ctx.direction = 'rtl';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = color;
-    ctx.font = '600 76px Vazirmatn, sans-serif';
-    ctx.fillText(title, 512, 122, 940);
-    ctx.font = '400 27px Vazirmatn, sans-serif';
-    ctx.fillStyle = color;
-    ctx.globalAlpha = .78;
-    ctx.fillText(subtitle, 512, 190, 920);
+    ctx.textAlign = unit ? 'right' : 'center';
+    ctx.fillStyle = '#fbf0d6';
+    ctx.font = '700 70px Vazirmatn, sans-serif';
+    ctx.fillText(title, unit ? 1212 : c.width / 2, subtitle ? c.height * .53 : c.height * .65, unit ? 990 : 922);
+    if (subtitle) {
+        ctx.font = '500 32px Vazirmatn, sans-serif';
+        ctx.fillText(subtitle, unit ? 1212 : c.width / 2, c.height * .80, unit ? 990 : 922);
+    }
+    if (unit) {
+        ctx.fillStyle = '#ecdec0';
+        ctx.fillRect(49, 37, 124, 85);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#30443a';
+        ctx.font = '700 47px Vazirmatn, sans-serif';
+        ctx.fillText(unit, 111, 97);
+    }
     const t = new T.CanvasTexture(c);
     t.colorSpace = T.SRGBColorSpace;
     t.anisotropy = 4;
@@ -226,7 +235,18 @@ export class MaterialLibrary {
     }
     add(name: string, params: T.MeshStandardMaterialParameters): T.MeshStandardMaterial { const m = new T.MeshStandardMaterial(params); this.materials[name] = m; this.owned.add(m); return m; }
     color(color: string, roughness = .88): T.MeshStandardMaterial { const key = `color:${color}:${roughness}`; return this.materials[key] || this.add(key, { color, roughness }); }
-    sign(title: string, subtitle: string, color: string): T.MeshStandardMaterial { const key = title + '|' + subtitle + '|' + color; const cached = this.signs.get(key); if (cached)
-        return cached; const t = textTexture(title, subtitle, color); this.textures.add(t); const m = new T.MeshStandardMaterial({ map: t, roughness: .8 }); this.owned.add(m); this.signs.set(key, m); return m; }
+    sign(title: string, subtitle: string, color: string, unit?: string): T.MeshStandardMaterial {
+        const key = [title, subtitle, color, unit].join('|');
+        const cached = this.signs.get(key);
+        if (cached) return cached;
+        const background = new T.Color(color).multiplyScalar(.69).getStyle();
+        const texture = textTexture(title, subtitle, background, unit);
+        this.textures.add(texture);
+        const material = new T.MeshStandardMaterial({ map: texture, roughness: .87, emissive: '#ffffff',
+            emissiveMap: texture, emissiveIntensity: .16 });
+        this.owned.add(material);
+        this.signs.set(key, material);
+        return material;
+    }
     dispose() { this.owned.forEach(m => m.dispose()); this.textures.forEach(t => t.dispose()); }
 }
