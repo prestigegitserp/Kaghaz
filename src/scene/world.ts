@@ -42,7 +42,7 @@ interface Trip {
 export class BazaarWorld {
     readonly renderer: T.WebGLRenderer;
     readonly scene = new T.Scene();
-    readonly camera = new T.PerspectiveCamera(62, 1, .07, 92);
+    readonly camera = new T.PerspectiveCamera(PHOTO_SHOTS[0].fov, 1, .07, 92);
     readonly materials: MaterialLibrary;
     readonly assets = new AuthoredAssets();
     private pendingAssets = new WeakSet<BoothCell>();

@@ -49,7 +49,7 @@ try {
     await live.screenshot({path:`${output}/hall-live.png`});
     const start=await scene.getAttribute('data-pose');
     const box=await canvas.boundingBox();
-    await canvas.click({position:{x:box.width*.51,y:box.height*.718}});
+    await canvas.click({position:{x:box.width*.51,y:box.height*.767}});
     await live.waitForFunction(previous=>document.querySelector('#scene').dataset.pose!==previous,start);
     await live.locator('.scene-tools [data-action="shots"]').click();
     await live.locator('[data-shot="entry"]').click();

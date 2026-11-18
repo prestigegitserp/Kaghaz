@@ -16,7 +16,7 @@ export function boothPoint(slot: number, across: number, forward: number): Point
 }
 
 export const PHOTO_SHOTS = [
-    { id: 'entry', label: 'ورودی شیشه‌ای', camera: HALL.entry, target: HALL.entryLook, fov: 62 },
+    { id: 'entry', label: 'ورودی شیشه‌ای', camera: HALL.entry, target: HALL.entryLook, fov: 56 },
     { id: 'islands', label: 'میدان نمونه‌ها', camera: [-2.4, 2.13, 5.45], target: [.1, 1.34, -3.0], fov: 57 },
     { id: 'color', label: 'خانهٔ رنگ', camera: [-5.48, 1.82, 6.36], target: [-10.5, 1.49, 6.62], fov: 51 },
     { id: 'ceiling', label: 'نورگیر مرکزی', camera: [1.15, 2.42, -4.9], target: [.6, 4.62, 1.1], fov: 60 },

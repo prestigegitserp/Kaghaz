@@ -39,8 +39,8 @@ export function assetForProduct(kind: ProductKind): AssetId {
 }
 
 export const LIGHTING = [
-    { id: 'day', label: 'نور روز', key: '#fff1d9', fill: '#dae9ff', exposure: 1.18,
-      intensity: 2.7, ambient: 1.84, practical: 19, environment: .54 },
+    { id: 'day', label: 'نور روز', key: '#fff1dc', fill: '#dae9ff', exposure: 1.09,
+      intensity: 2.7, ambient: 1.41, practical: 23, environment: .44 },
     { id: 'warm', label: 'نور گرم', key: '#ffd9a9', fill: '#dee8ff', exposure: 1.19,
       intensity: 1.78, ambient: 1.59, practical: 37, environment: .48 },
     { id: 'night', label: 'نور ویترین', key: '#bccfe8', fill: '#e2e6ff', exposure: 1.24,

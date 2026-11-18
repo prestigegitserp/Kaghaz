@@ -141,7 +141,9 @@ export function mountFold(root:HTMLElement):()=>void {
         const [a,b,,d]=cover.vertices, p=project(a),q=project(b),r=project(d);
         ctx.save();
         ctx.transform((q[0]-p[0])/100,(q[1]-p[1])/100,(r[0]-p[0])/100,(r[1]-p[1])/100,p[0],p[1]);
+        ctx.beginPath();ctx.rect(7,13,86,64);ctx.clip();
         ctx.fillStyle='#2c6858';ctx.fillRect(7,13,86,64);
+        ctx.direction='ltr';ctx.textAlign='left';
         ctx.fillStyle='#fff1d6';ctx.font='600 11px sans-serif';ctx.fillText('KAGHAZ',15,38);
         ctx.font='5.5px sans-serif';ctx.fillText('BAHARESTAN',15,53);
         ctx.strokeStyle='#e2ba7b';ctx.lineWidth=.54;
