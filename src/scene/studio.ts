@@ -44,11 +44,10 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
     const light = new T.DirectionalLight('#ffecd5', 3.2);
     const rim = new T.DirectionalLight('#b5cde8', 1.22);
     rim.position.set(1.5, 2.5, -2);
-    Object.assign(light.shadow.camera, { left: -1.35, right: 1.35, top: 1.35, bottom: -1.35, near: .05, far: 6 });
+    Object.assign(light.shadow.camera, { left: -.94, right: .94, top: .94, bottom: -.94, near: .05, far: 6 });
     light.castShadow = true;
-    light.shadow.mapSize.set(1024, 1024);
-    light.shadow.bias = -.00025;
-    light.shadow.normalBias = .002;
+    light.shadow.mapSize.set(2048, 2048);
+    light.shadow.bias = -.00045;
     scene.add(sky, light, light.target, rim);
 
     const floorGeometry = new T.PlaneGeometry(200, 200);
@@ -87,6 +86,7 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
         const radians = T.MathUtils.degToRad(T.MathUtils.clamp(degrees, 7, 76));
         light.position.set(-2.6 * Math.cos(radians), 2.9 * Math.sin(radians), 1.55 * Math.cos(radians));
         light.intensity = T.MathUtils.lerp(3.75, 2.65, radians / 1.4);
+        light.shadow.normalBias = T.MathUtils.lerp(.009, .004, radians / 1.4);
         invalidate(true);
     }
     function setView(id: InspectionView) {
