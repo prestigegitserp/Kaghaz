@@ -110,6 +110,7 @@
 .scene-bottomline .walk-hint { color: #f9eccf; text-shadow: 0 1px 6px #1c1c16; }
 .scene-caption { background: #262a23af; color: #f2e7cf; font-size: 9px; height: 23px; }
 .scene-shell:fullscreen .scene-editorial { top: 32%; }
+.scene-shell .metrics { top: auto; bottom: 70px; pointer-events: none; }
 .fallback-shell .lighting-controls, .fallback-shell .navigation-controls,
 .fallback-shell [data-action="shots"], .fallback-shell [data-action="capture"],
 .fallback-shell [data-action="quality"], .fallback-shell #light-caption { display: none; }
