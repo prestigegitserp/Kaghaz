@@ -1,4 +1,4 @@
-import { STATION_SPECIMENS } from '../domain/material-profiles.ts';
+import { STATION_SPECIMENS, type MaterialProfileId } from '../domain/material-profiles.ts';
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -45,6 +45,7 @@ export class BazaarWorld {
     readonly renderer: T.WebGLRenderer;
     readonly scene = new T.Scene();
     private specimenDisplays = new Map<StationId, T.Group>();
+    private specimenPreviews: Map<MaterialProfileId, T.Group>;
     readonly camera = new T.PerspectiveCamera(PHOTO_SHOTS[0].fov, 1, .07, 92);
     readonly materials: MaterialLibrary;
     readonly assets = new AuthoredAssets();
@@ -146,7 +147,8 @@ export class BazaarWorld {
             this.scene.add(light);
             this.practicals.push(light);
         }
-        const building=createArchitecture(this.materials);
+        const {root:building,previews}=createArchitecture(this.materials);
+        this.specimenPreviews=previews;
         this.scene.add(building);
         for(const prop of PASSAGE_PROPS)void this.assets.instance(prop.asset).then(asset=>{
             if(this.abort.signal.aborted)return;
@@ -475,6 +477,14 @@ export class BazaarWorld {
             if (table && table.visible !== active) {
                 table.visible = active;
                 this.renderer.shadowMap.needsUpdate = true;
+            }
+            for (const {asset} of contents) {
+                const preview = this.specimenPreviews.get(asset)!;
+                const visible = !active || !table?.children.some(child => child.name === asset);
+                if (preview.visible !== visible) {
+                    preview.visible = visible;
+                    this.renderer.shadowMap.needsUpdate = true;
+                }
             }
         }
     }

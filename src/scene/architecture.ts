@@ -1,7 +1,7 @@
 import * as T from 'three';
 import { HALL, STATION_IDS } from '../domain/hall.ts';
 import { Batch, softContact } from './batch.ts';
-import { STATION_SPECIMENS } from '../domain/material-profiles.ts';
+import { STATION_SPECIMENS, type MaterialProfileId } from '../domain/material-profiles.ts';
 import type { MaterialLibrary } from './materials.ts';
 
 export const STOCK_COLORS = ['#396477','#a95043','#638172','#ac8054','#5d6386','#916879','#d4c4a2'];
@@ -13,6 +13,17 @@ export const PASSAGE_PROPS = [
 
 export function createArchitecture(library:MaterialLibrary) {
     const root=new T.Group(), batch=new Batch(root), m=library.materials;
+    const previews = new Map<MaterialProfileId, T.Group>();
+    const previewColors: Record<MaterialProfileId, [string, string, string]> = {
+        carbonless: ['#e6c483', '#d9a0a0', '#ebe8d8'],
+        foil: ['#315969', '#315969', '#cbc7bc'],
+        labels: ['#ba905f', '#d1b78d', '#ebe8d8'],
+        microflute: ['#ad7953', '#ba8b66', '#c39b71'],
+        vellum: ['#d4ddd1', '#e1e3d5', '#ebeadf'],
+        deckle: ['#a3b7a9', '#d4ccb2', '#e4dac1'],
+        'coated-board': ['#898478', '#aba69a', '#e0d9c6'],
+        honeycomb: ['#9f744d', '#b2855b', '#c49e71'],
+    };
     root.name='baharestan-passage';
     const {width,depth,decks,opening,stairs}=HALL,h=decks[1],f=opening.halfWidth;
     const metal=library.color('#374b45',.39), guard=library.color('#9e9e8c',.32), beam=library.color('#d4cebb',.61);
@@ -112,8 +123,18 @@ export function createArchitecture(library:MaterialLibrary) {
         name.rotation.y=front*Math.PI/2;
         root.add(name);
         const specimens=STATION_SPECIMENS[id] || [];
-        for (const {offset} of specimens)
+        for (const {asset,offset} of specimens) {
             batch.box(m.dark,[x,y+1.048,z+offset],[.59,.008,.43],[],.83,false);
+            const preview = new T.Group(), stock = new Batch(preview);
+            preview.position.set(x,y+1.054,z+offset);
+            previewColors[asset].forEach((color,i) => {
+                stock.box(library.color(color),[(i-1)*.025,.007+i*.010,0],
+                    [.38-i*.014,.009,.30],[0,(i-1)*.12,0],1,true);
+            });
+            stock.finish();
+            root.add(preview);
+            previews.set(asset,preview);
+        }
         for(let i=0;i<(id==='samples'?7:5);i++){
             const color=library.color(STOCK_COLORS[(i+spot.level)%STOCK_COLORS.length]);
             const offset=(i-2.3)*.186, zz=z+offset;
@@ -133,5 +154,5 @@ export function createArchitecture(library:MaterialLibrary) {
         contact.position.y+=y;
     }
     batch.finish();
-    return root;
+    return {root,previews};
 }

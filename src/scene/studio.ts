@@ -72,6 +72,7 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
     const root = new T.Group();
     scene.add(floor, root);
     let frame=0,disposed=false,separation=0;
+    let modelScale = 1;
     const animatedMaterials=new Set<T.Material>();
     let view: InspectionView = 'whole';
     const size = new T.Vector3(.8, .25, .8);
@@ -128,7 +129,7 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
             if (!(object instanceof T.Mesh)) return;
             const part = String(object.userData.part);
             const lift = product.profile && part === 'core' ? .115 : vertical[part] || 0;
-            object.position.y = lift * separation;
+            object.position.y = lift * separation / (product.profile ? modelScale : 1);
         });
         invalidate(true);
     }
@@ -156,10 +157,10 @@ export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAs
         if (disposed) return;
         const bounds = new T.Box3().setFromObject(model), center = bounds.getCenter(new T.Vector3());
         bounds.getSize(size);
-        const scale = .92 / Math.max(size.x, size.y, size.z);
-        size.multiplyScalar(scale);
-        model.scale.setScalar(scale);
-        model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+        modelScale = .92 / Math.max(size.x, size.y, size.z);
+        size.multiplyScalar(modelScale);
+        model.scale.setScalar(modelScale);
+        model.position.set(-center.x * modelScale, -bounds.min.y * modelScale, -center.z * modelScale);
         if(asset==='wrapped-stock-pallet')model.traverse(object=>{
             if(!(object instanceof T.Mesh)||!String(object.userData.part).startsWith('film'))return;
             const own=(object.material as T.Material).clone();
