@@ -6,25 +6,39 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: [Validate Kaghaz]
-    branches: [v2]
+    branches: [v2, v3]
     types: [completed]
 
 permissions:
   contents: read
 
 concurrency:
-  group: github-pages
-  cancel-in-progress: true
+  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && 'github-pages-skipped' || 'github-pages' }}
+  cancel-in-progress: false
 
 jobs:
-  frozen-v1:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
+  build:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: v1
+            # Root and /v1 both use the original, frozen source.
+            ref: 25dc79f755cdd5f71b324f3f1705c67097421453
+            base: './'
+          - version: v2
+            ref: v2
+            base: /Kaghaz/v2/
+          - version: v3
+            ref: v3
+            base: /Kaghaz/v3/
     steps:
       - uses: actions/checkout@v4
         with:
-          # The original release stays byte-for-byte pinned; root and /v1 use this source.
-          ref: 25dc79f755cdd5f71b324f3f1705c67097421453
+          ref: ${{ matrix.ref }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -33,39 +47,18 @@ jobs:
       - run: npm test
       - run: npm run build
         env:
-          VITE_PUBLIC_BASE: './'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: frozen-v1
-          path: dist
-          retention-days: 7
-
-  current-v2:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'v2' }}
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-        env:
-          VITE_PUBLIC_BASE: /Kaghaz/v2/
+          VITE_PUBLIC_BASE: ${{ matrix.base }}
       - name: Record deployed source
+        if: matrix.version != 'v1'
         run: git rev-parse HEAD > dist/source-commit.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: current-v2
+          name: kaghaz-pages-${{ matrix.version }}
           path: dist
           retention-days: 7
 
   assemble:
-    needs: [frozen-v1, current-v2]
+    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -73,25 +66,22 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: frozen-v1
-          path: releases/v1
-      - uses: actions/download-artifact@v4
-        with:
-          name: current-v2
-          path: releases/v2
-      - name: Assemble three routes in one Pages artifact
+          pattern: kaghaz-pages-*
+          path: releases
+      - name: Assemble the root and three version routes
         shell: bash
         run: |
-          mkdir -p dist
-          cp -a releases/v1/. dist/
-          mkdir -p dist/v1 dist/v2
-          cp -a releases/v1/. dist/v1/
-          cp -a releases/v2/. dist/v2/
+          mkdir -p dist/v1 dist/v2 dist/v3
+          cp -a releases/kaghaz-pages-v1/. dist/
+          cp -a releases/kaghaz-pages-v1/. dist/v1/
+          cp -a releases/kaghaz-pages-v2/. dist/v2/
+          cp -a releases/kaghaz-pages-v3/. dist/v3/
           touch dist/.nojekyll
           test -f dist/index.html
-          test -f dist/v1/index.html
-          test -f dist/v2/index.html
+          for version in v1 v2 v3; do test -f "dist/$version/index.html"; done
           test -f dist/v2/v2/models/paper-ream.glb
+          test -f dist/v3/v3/models/paper-ream-open.glb
+          test -f dist/v3/v3/renders/market.webp
       - uses: actions/configure-pages@v6.0.0
       - uses: actions/upload-pages-artifact@v5.0.0
         with:
@@ -107,6 +97,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Publish both versions to github.io
+      - name: Publish Kaghaz to github.io
         id: deployment
         uses: actions/deploy-pages@v5.0.1

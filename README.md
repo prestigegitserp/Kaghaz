@@ -1,6 +1,6 @@
-> **نسخه‌های بازار:** [نسخهٔ اول محفوظ](https://prestigegitserp.github.io/Kaghaz/v1/) · [نسخهٔ دوم با مدل‌های Blender و مصالح PBR](https://prestigegitserp.github.io/Kaghaz/v2/) · [آدرس اصلی، نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/)
+> **نسخه‌های بازار:** [نسخهٔ سوم و میز بررسی جنس](https://prestigegitserp.github.io/Kaghaz/v3/) · [نسخهٔ دوم](https://prestigegitserp.github.io/Kaghaz/v2/) · [نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/v1/) · [آدرس اصلی](https://prestigegitserp.github.io/Kaghaz/)
 >
-> کد اولیه در شاخهٔ `v1` با commit ثابت `25dc79f755cdd5f71b324f3f1705c67097421453` محفوظ است. توسعهٔ جدید در شاخهٔ `v2` انجام می‌شود. گردش‌کار Pages روی `main` هر دو نسخه را در یک خروجی منتشر می‌کند؛ موفقیت آزمون‌های `v2` انتشار خودکار آن را فعال می‌کند. کد رابط نسخهٔ اول در این شاخه تغییر نکرده است.
+> گردش‌کار Pages روی `main` هر سه نسخه را از شاخه‌های خودشان در یک خروجی منتشر می‌کند. آدرس اصلی از commit ثابت نسخهٔ اول `25dc79f755cdd5f71b324f3f1705c67097421453` ساخته می‌شود.
 
 # کاغذ — نسخهٔ اول راستهٔ تعاملی
 
