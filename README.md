@@ -1,6 +1,6 @@
-> **نسخه‌های بازار:** [نسخهٔ چهارم، سالن مدرن بهارستان](https://prestigegitserp.github.io/Kaghaz/v4/) · [نسخهٔ سوم](https://prestigegitserp.github.io/Kaghaz/v3/) · [نسخهٔ دوم](https://prestigegitserp.github.io/Kaghaz/v2/) · [نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/v1/)
+> **نسخه‌های بازار** · [نسخهٔ پنجم، پاساژ کاغذ بهارستان](https://prestigegitserp.github.io/Kaghaz/v5/) · [نسخهٔ چهارم](https://prestigegitserp.github.io/Kaghaz/v4/) · [نسخهٔ سوم](https://prestigegitserp.github.io/Kaghaz/v3/) · [نسخهٔ دوم](https://prestigegitserp.github.io/Kaghaz/v2/) · [نسخهٔ اول](https://prestigegitserp.github.io/Kaghaz/v1/)
 >
-> GitHub Pages چهار شاخهٔ نسخه را در یک خروجی منتشر می‌کند. [آدرس اصلی](https://prestigegitserp.github.io/Kaghaz/) از commit ثابت نسخهٔ اول ساخته می‌شود.
+> GitHub Pages پنج نسخه را در یک خروجی منتشر می‌کند. [آدرس اصلی](https://prestigegitserp.github.io/Kaghaz/) از commit ثابت نسخهٔ اول ساخته می‌شود.
 
 # کاغذ — نسخهٔ اول راستهٔ تعاملی
 
