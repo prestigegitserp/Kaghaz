@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: [Validate Kaghaz]
-    branches: [v2, v3, v4]
+    branches: [v2, v3, v4, v5]
     types: [completed]
 
 permissions:
@@ -37,6 +37,9 @@ jobs:
           - version: v4
             ref: v4
             base: /Kaghaz/v4/
+          - version: v5
+            ref: v5
+            base: /Kaghaz/v5/
     steps:
       - uses: actions/checkout@v4
         with:
@@ -71,23 +74,26 @@ jobs:
         with:
           pattern: kaghaz-pages-*
           path: releases
-      - name: Assemble the root and four version routes
+      - name: Assemble the root and five version routes
         shell: bash
         run: |
-          mkdir -p dist/v1 dist/v2 dist/v3 dist/v4
+          mkdir -p dist/v1 dist/v2 dist/v3 dist/v4 dist/v5
           cp -a releases/kaghaz-pages-v1/. dist/
           cp -a releases/kaghaz-pages-v1/. dist/v1/
           cp -a releases/kaghaz-pages-v2/. dist/v2/
           cp -a releases/kaghaz-pages-v3/. dist/v3/
           cp -a releases/kaghaz-pages-v4/. dist/v4/
+          cp -a releases/kaghaz-pages-v5/. dist/v5/
           touch dist/.nojekyll
           test -f dist/index.html
-          for version in v1 v2 v3 v4; do test -f "dist/$version/index.html"; done
+          for version in v1 v2 v3 v4 v5; do test -f "dist/$version/index.html"; done
           test -f dist/v2/v2/models/paper-ream.glb
           test -f dist/v3/v3/models/paper-ream-open.glb
           test -f dist/v3/v3/renders/market.webp
           test -f dist/v4/v4/renders/hall.webp
           test -f dist/v4/v4/models/paper-ream-modern.glb
+          test -f dist/v5/v5/renders/passage.webp
+          test -f dist/v5/v5/models/wrapped-stock-pallet.glb
       - uses: actions/configure-pages@v6.0.0
       - uses: actions/upload-pages-artifact@v5.0.0
         with:

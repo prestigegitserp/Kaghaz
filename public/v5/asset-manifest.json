@@ -1,0 +1,58 @@
+{
+  "version": 5,
+  "assets": [
+    {
+      "id": "counter-accessories",
+      "file": "models/counter-accessories.glb",
+      "units": "meters",
+      "bytes": 73452,
+      "sourceBytes": 164160,
+      "triangles": 734,
+      "sha256": "f95d740b988da97090596d7ab9f5d6c24478baa36dfe637ac818b2d1f5da4eaa"
+    },
+    {
+      "id": "loaded-paper-cart",
+      "file": "models/loaded-paper-cart.glb",
+      "units": "meters",
+      "bytes": 313864,
+      "sourceBytes": 1881720,
+      "triangles": 994,
+      "sha256": "21e5da59d83b41eb079aa22f33d0ba77e9c0f0ddb38462d54edaa8185fe079f3"
+    },
+    {
+      "id": "wrapped-stock-pallet",
+      "file": "models/wrapped-stock-pallet.glb",
+      "units": "meters",
+      "bytes": 566624,
+      "sourceBytes": 5063484,
+      "triangles": 4036,
+      "sha256": "ed6fcd2d7d4969032b8a34f4f0e53a85b30cb09c2ae18d4119ca3a34296fc1ec"
+    }
+  ],
+  "renders": [
+    {
+      "file": "renders/passage.webp",
+      "width": 1536,
+      "height": 1000,
+      "bytes": 143252
+    },
+    {
+      "file": "renders/store.webp",
+      "width": 1440,
+      "height": 965,
+      "bytes": 96620
+    },
+    {
+      "file": "renders/balcony.webp",
+      "width": 1440,
+      "height": 960,
+      "bytes": 101520
+    },
+    {
+      "file": "renders/stock.webp",
+      "width": 1280,
+      "height": 880,
+      "bytes": 88788
+    }
+  ]
+}

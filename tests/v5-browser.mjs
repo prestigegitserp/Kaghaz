@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { resolve } from 'node:path';
 import { chromium, devices } from 'playwright';
 
-const base = '/Kaghaz/v4/';
+const base = '/Kaghaz/v5/';
 const dist = resolve('dist');
 const types = { html: 'text/html', js: 'text/javascript', css: 'text/css', webp: 'image/webp',
     svg: 'image/svg+xml', glb: 'model/gltf-binary', woff2: 'font/woff2', txt: 'text/plain' };
@@ -38,25 +38,33 @@ try {
     const errors = [], missing = [];
     live.on('pageerror', error => errors.push(error.message));
     live.on('response', response => { if (response.status() >= 400) missing.push(response.url()); });
-    const waitForModel = live.waitForResponse(response => response.url().endsWith('/paper-ream-modern.glb') && response.ok(),{timeout:60_000});
+    const waitForModel = live.waitForResponse(response => response.url().endsWith('/loaded-paper-cart.glb') && response.ok(),{timeout:60_000});
     await live.goto(url);
     const scene=live.locator('#scene');
     const canvas=scene.locator('canvas');
     await canvas.waitFor({timeout:45_000});
     await waitForModel;
     await live.waitForFunction(()=>document.querySelector('#scene').dataset.pose);
-    await live.locator('[data-live-station="fold"]').waitFor();
+    await live.locator('.station-hotspots button[data-live-station]:visible').first().waitFor();
     await live.screenshot({path:`${output}/hall-live.png`});
     const start=await scene.getAttribute('data-pose');
     const box=await canvas.boundingBox();
-    await canvas.click({position:{x:box.width*.51,y:box.height*.767}});
+    await canvas.click({position:{x:box.width*.51,y:box.height*.787}});
     await live.waitForFunction(previous=>document.querySelector('#scene').dataset.pose!==previous,start);
     await live.locator('.scene-tools [data-action="shots"]').click();
     await live.locator('[data-shot="entry"]').click();
+    await live.locator('.floor-picker [data-level="1"]').click();
+    await live.waitForFunction(()=>document.querySelector('#scene').dataset.floor==='1',undefined,{timeout:30_000});
+    await live.locator('.scene-tools [data-action="shots"]').click();
+    await live.locator('[data-shot="balcony"]').click();
+    await live.waitForFunction(()=>document.querySelector('#scene').dataset.pose==='-2.06,8.46',undefined,{timeout:30_000});
+    await live.screenshot({path:`${output}/balcony-live.png`});
+    await live.locator('.floor-picker [data-level="0"]').click();
+    await live.waitForFunction(()=>document.querySelector('#scene').dataset.floor==='0',undefined,{timeout:30_000});
     await live.locator('[data-lighting="warm"]').click();
     assert.equal(await live.locator('[data-lighting="warm"]').getAttribute('aria-pressed'),'true');
 
-    await live.locator('[data-live-station="fold"]').click();
+    await live.locator('.station-dock [data-station="fold"]').click();
     const fold=live.locator('#fold-canvas');
     const checkPixel=canvas=>canvas.evaluate(el=>{
         const ctx=el.getContext('2d'),pix=ctx.getImageData(0,0,el.width,el.height).data;
@@ -86,6 +94,40 @@ try {
     await live.screenshot({path:`${output}/proof-station.png`});
     await live.keyboard.press('Escape');
 
+    await live.locator('.station-dock [data-station="roll"]').click();
+    const laboratory=live.locator('#passage-canvas'),roll=await checkPixel(laboratory);
+    await live.locator('#roll-used').fill('62');
+    assert.match(await live.locator('#passage-spec').textContent(),/مانده روی رول/);
+    assert.notEqual(await checkPixel(laboratory),roll);
+    await live.screenshot({path:`${output}/roll.png`});
+    await live.keyboard.press('Escape');
+
+    await live.locator('.station-dock [data-station="press"]').click();
+    const composite=await checkPixel(laboratory);
+    await live.locator('[data-ink="M"]').click();
+    assert.equal(await live.locator('[data-ink="M"]').getAttribute('aria-pressed'),'false');
+    await live.locator('#press-align').click();
+    assert.match(await live.locator('#passage-spec').textContent(),/تراز/);
+    assert.notEqual(await checkPixel(laboratory),composite);
+    await live.screenshot({path:`${output}/press.png`});
+    await live.keyboard.press('Escape');
+
+    await live.locator('.station-dock [data-station="pallet"]').click();
+    const packed=await checkPixel(laboratory);
+    await live.locator('#pallet-levels').fill('2');
+    assert.notEqual(await checkPixel(laboratory),packed);
+    assert.match(await live.locator('#passage-spec').textContent(),/کیلوگرم/);
+    await live.screenshot({path:`${output}/pallet.png`});
+    await live.keyboard.press('Escape');
+
+    await live.locator('.station-dock [data-station="unwrap"]').click();
+    await live.locator('.package-live canvas').waitFor({timeout:35_000});
+    await live.locator('#unwrap-play').click();
+    await live.waitForFunction(()=>document.querySelector('#unwrap-film').value==='100');
+    assert.match(await live.locator('#passage-spec').textContent(),/جداشده/);
+    await live.screenshot({path:`${output}/unwrap.png`});
+    await live.keyboard.press('Escape');
+
     await live.locator('.station-dock [data-station="samples"]').click();
     await live.locator('.lab-samples button[data-product="a4-80"]').first().click();
     await live.locator('#product-studio canvas').waitFor({timeout:45_000});
@@ -100,12 +142,12 @@ try {
     await live.locator('[name="subtitle"]').fill('آزمون ثبت غرفه');
     await live.locator('[name="productName"]').fill('مقوای نمایشی');
     await live.locator('#creator-form button[type="submit"]').click();
-    await live.waitForFunction(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v4')).customBooths.length===1);
+    await live.waitForFunction(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v5')).customBooths.length===1);
     await live.reload();
-    assert.equal(await live.evaluate(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v4')).inquiry[0].productId),'a4-80');
+    assert.equal(await live.evaluate(()=>JSON.parse(localStorage.getItem('kaghaz.workspace.v5')).inquiry[0].productId),'a4-80');
     assert.deepEqual(errors,[]);
     assert.deepEqual(missing,[]);
-    console.log('WebGL2 hall, ground walking, live stations, folding, print proof, catalog, and saved booths passed.');
+    console.log('WebGL2 passage, upper pedestrian deck, all seven stations and saved booths passed.');
 
     const mobileContext = await browser.newContext(devices['iPhone 13']);
     await mobileContext.addInitScript(() => {
@@ -120,18 +162,18 @@ try {
     assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await mobile.screenshot({ path: `${output}/mobile-fallback.png` });
     await mobile.locator('.render-link').click();
-    await mobile.locator('[data-review="sample-table"]').click();
+    await mobile.locator('[data-review="balcony"]').click();
     await mobile.locator('[data-action="gallery-zoom"]').click();
     await mobile.waitForFunction(()=>{
         const img=document.querySelector('.gallery-stage.zoomed img');
         return img?.complete && img.naturalWidth>1300;
     });
-    assert.ok((await mobile.locator('#gallery-download').getAttribute('href')).endsWith('/sample-table.webp'));
+    assert.ok((await mobile.locator('#gallery-download').getAttribute('href')).endsWith('/balcony.webp'));
     await mobile.locator('dialog [data-action="close"]').click();
     await mobile.locator('.station-dock [data-station="fold"]').click();
     await mobile.locator('#fold-amount').fill('42');
     assert.equal(await mobile.locator('#fold-canvas').getAttribute('data-progress'),'42');
-    assert.deepEqual(await mobile.locator('.version-menu a').evaluateAll(links=>links.map(a=>new URL(a.href).pathname)),['/Kaghaz/v3/','/Kaghaz/v2/','/Kaghaz/v1/']);
+    assert.deepEqual(await mobile.locator('.version-menu a').evaluateAll(links=>links.map(a=>new URL(a.href).pathname)),['/Kaghaz/v4/','/Kaghaz/v3/','/Kaghaz/v2/','/Kaghaz/v1/']);
     console.log('Mobile fallback, Cycles gallery zoom and folding without WebGL passed.');
 } finally {
     await browser?.close();

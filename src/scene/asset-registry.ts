@@ -14,8 +14,13 @@ const updated = {
     'carton-open': 'کارتن با لبهٔ موج‌دار و خط تا',
     'kraft-roll': 'رول کرافت با پیچش کاغذ و هستهٔ توخالی',
 };
-const current = { 'paper-ream-modern': 'لفاف تحریر بهارستان', 'paper-ream-open-modern': 'بند نیمه‌باز بهارستان' };
-export type AssetId = keyof typeof legacy | keyof typeof updated | keyof typeof current;
+const v4 = { 'paper-ream-modern': 'لفاف تحریر بهارستان', 'paper-ream-open-modern': 'بند نیمه‌باز بهارستان' };
+const current = {
+    'wrapped-stock-pallet':'پالت بسته‌شده با فیلم و تسمه',
+    'loaded-paper-cart':'چرخ‌دستی بارگیری‌شدهٔ پاساژ',
+    'counter-accessories':'ماشین‌حساب، قبض و چسب‌کش',
+};
+export type AssetId = keyof typeof legacy | keyof typeof updated | keyof typeof v4 | keyof typeof current;
 export interface AssetDefinition {
     id: AssetId;
     url: string;
@@ -25,8 +30,8 @@ export interface AssetDefinition {
     maxTriangles: number;
 }
 export const ASSET_REGISTRY = Object.fromEntries(
-    Object.entries({ ...legacy, ...updated, ...current }).map(([id, label]) => [id, {
-        id, label, url: `${Object.hasOwn(current,id) ? 'v4' : Object.hasOwn(updated,id) ? 'v3' : 'v2'}/models/${id}.glb`,
+    Object.entries({ ...legacy, ...updated, ...v4, ...current }).map(([id, label]) => [id, {
+        id, label, url: `${Object.hasOwn(current,id) ? 'v5' : Object.hasOwn(v4,id) ? 'v4' : Object.hasOwn(updated,id) ? 'v3' : 'v2'}/models/${id}.glb`,
         units: 'meters', maxBytes: 2 * 1024 * 1024, maxTriangles: 60_000,
     }]),
 ) as Record<AssetId, AssetDefinition>;
@@ -39,10 +44,10 @@ export function assetForProduct(kind: ProductKind): AssetId {
 }
 
 export const LIGHTING = [
-    { id: 'day', label: 'نور روز', key: '#fff1dc', fill: '#dae9ff', exposure: 1.09,
-      intensity: 2.7, ambient: 1.41, practical: 23, environment: .44 },
-    { id: 'warm', label: 'نور گرم', key: '#ffd9a9', fill: '#dee8ff', exposure: 1.19,
-      intensity: 1.78, ambient: 1.59, practical: 37, environment: .48 },
-    { id: 'night', label: 'نور ویترین', key: '#bccfe8', fill: '#e2e6ff', exposure: 1.24,
-      intensity: 1.11, ambient: 1.26, practical: 61, environment: .44 },
+    {id:'day',label:'نور روز',key:'#f4f5ec',fill:'#d8e6ef',exposure:1.14,
+        intensity:2.15,ambient:1.27,practical:27,environment:.46},
+    {id:'warm',label:'نور گرم',key:'#ffe0b0',fill:'#dbe8ef',exposure:1.13,
+        intensity:1.77,ambient:1.08,practical:42,environment:.42},
+    {id:'night',label:'نور ویترین',key:'#c9d7e3',fill:'#d0e0f9',exposure:1.22,
+        intensity:1.20,ambient:.86,practical:65,environment:.35},
 ] as const;

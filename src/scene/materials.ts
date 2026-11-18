@@ -159,7 +159,7 @@ export class MaterialLibrary {
         this.add('lamp', { color: '#fff3ce', emissive: '#ffe7b4', emissiveIntensity: 1.7, roughness: .8 });
         this.add('glass', { color: '#dce4d7', roughness: .22, metalness: .12, transparent: true, opacity: .14, depthWrite: false });
         const loader = new T.TextureLoader();
-        const scanTiles = { plaster: [1.5, 1.5], wood: [.78, .78], floor: [2.2, 2.2] };
+        const scanTiles = { plaster: [1.5, 1.5], wood: [.78, .78], floor: [2.02, 2.02] };
         const load = (path: string, srgb: boolean, apply: (texture: T.Texture) => void) => {
             loader.load(`${import.meta.env.BASE_URL}${path}`, texture => {
                 texture.colorSpace = srgb ? T.SRGBColorSpace : T.NoColorSpace;
@@ -173,18 +173,20 @@ export class MaterialLibrary {
         for (const [key, tile] of Object.entries(scanTiles)) {
             const material = this.materials[key];
             material.userData.metricUV = tile;
-            load(`v4/materials/${key}-color.webp`, true, texture => {
+            const base = key==='floor' ? 'v5/materials/tile' : `v4/materials/${key}`;
+
+            load(`${base}-color.webp`, true, texture => {
                 material.color.set('#ffffff');
                 material.map = texture;
                 material.bumpMap = null;
                 material.needsUpdate = true;
             });
-            load(`v4/materials/${key}-normal.webp`, false, texture => {
+            load(`${base}-normal.webp`, false, texture => {
                 material.normalMap = texture;
                 material.normalScale.setScalar(key === 'wood' ? .47 : .28);
                 material.needsUpdate = true;
             });
-            load(`v4/materials/${key}-arm.webp`, false, texture => {
+            load(`${base}-arm.webp`, false, texture => {
                 material.roughness = 1;
                 material.roughnessMap = material.aoMap = texture;
                 material.aoMapIntensity = .7;
@@ -203,6 +205,15 @@ export class MaterialLibrary {
             this.materials.ream.map = texture;
             this.materials.ream.needsUpdate = true;
         });
+        for(let i=0;i<6;i++){
+            const stock=this.add(`stock-${i}`,{map:label,roughness:.65});
+            load(`v5/materials/stock-${i}.webp`,true,t=>{
+                stock.map=t;
+                stock.needsUpdate=true;
+            });
+        }
+        this.add('shop-glass',{color:'#d2deb7',transparent:true,
+            opacity:.115,roughness:.15,metalness:.06,side:T.DoubleSide,depthWrite:false});
         const alternateWrapper = this.add('warm-ream', { map: label, roughness: .62 });
         load('v4/materials/wrapper-warm.webp', true, texture => {
             alternateWrapper.map = texture;

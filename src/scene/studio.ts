@@ -2,7 +2,7 @@ import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Product } from '../domain/model.ts';
 import type { AuthoredAssets } from './authored.ts';
-import { assetForProduct } from './asset-registry.ts';
+import { assetForProduct, type AssetId } from './asset-registry.ts';
 
 import type { InspectionView } from '../domain/review.ts';
 
@@ -11,6 +11,7 @@ export interface StudioControl {
     setView(id: InspectionView): void;
     setAngle(degrees: number): void;
     setSeparation(amount: number): void;
+    setWrap(film:number,straps:number):void;
 }
 
 const vertical: Record<string, number> = {
@@ -18,7 +19,8 @@ const vertical: Record<string, number> = {
     core: .27, cover: .13, swatch: .05, label: .025,
 };
 
-export function mountStudio(host: HTMLElement, product: Product, assets: AuthoredAssets, ready: () => void): StudioControl {
+export function mountStudio(host:HTMLElement, product:Product, assets:AuthoredAssets, ready:()=>void,
+    asset:AssetId=assetForProduct(product.kind)):StudioControl {
     const renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.45));
     renderer.outputColorSpace = T.SRGBColorSpace;
@@ -58,7 +60,8 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
     floor.receiveShadow = true;
     const root = new T.Group();
     scene.add(floor, root);
-    let frame = 0, disposed = false, separation = 0;
+    let frame=0,disposed=false,separation=0;
+    const animatedMaterials=new Set<T.Material>();
     let view: InspectionView = 'whole';
     const size = new T.Vector3(.8, .25, .8);
 
@@ -115,8 +118,27 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
         });
         invalidate(true);
     }
+    function setWrap(film:number,straps:number){
+        root.traverse(object=>{
+            if(!(object instanceof T.Mesh))return;
+            const key=String(object.userData.part);
+            if(key.startsWith('film')){
+                const index=Number(key.split('-')[1])||0,angle=index*Math.PI/2;
+                const material=object.material as T.MeshStandardMaterial;
+                material.opacity=.27*(1-film*.96);
+                object.visible=film<.99;
+                object.position.set(Math.sin(angle)*film*.33,film*.20,Math.cos(angle)*film*.30);
+                object.rotation.y=film*(index%2===0?1:-1)*.17;
+            }
+            if(key==='straps'){
+                object.visible=straps<.99;
+                object.position.y=straps*.34;
+            }
+        });
+        invalidate(true);
+    }
     setAngle(34);
-    void assets.instance(assetForProduct(product.kind)).then(model => {
+    void assets.instance(asset).then(model => {
         if (disposed) return;
         const bounds = new T.Box3().setFromObject(model), center = bounds.getCenter(new T.Vector3());
         bounds.getSize(size);
@@ -124,6 +146,13 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
         size.multiplyScalar(scale);
         model.scale.setScalar(scale);
         model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+        if(asset==='wrapped-stock-pallet')model.traverse(object=>{
+            if(!(object instanceof T.Mesh)||!String(object.userData.part).startsWith('film'))return;
+            const own=(object.material as T.Material).clone();
+            own.transparent=true;own.depthWrite=false;
+            object.castShadow=false;
+            object.material=own;animatedMaterials.add(own);
+        });
         root.add(model);
         setView(view);
         setSeparation(separation);
@@ -137,7 +166,7 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
         }
     });
     return {
-        setAngle, setView, setSeparation,
+        setAngle,setView,setSeparation,setWrap,
         dispose() {
             disposed = true;
             cancelAnimationFrame(frame);
@@ -146,6 +175,7 @@ export function mountStudio(host: HTMLElement, product: Product, assets: Authore
             light.shadow.dispose();
             floorGeometry.dispose();
             floorMaterial.dispose();
+            animatedMaterials.forEach(m=>m.dispose());
             renderer.dispose();
             renderer.forceContextLoss();
             renderer.domElement.remove();

@@ -6,18 +6,19 @@ import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { MaterialLibrary } from './materials.ts';
 import { Batch } from './batch.ts';
-import { createArchitecture } from './architecture.ts';
+import { createArchitecture, PASSAGE_PROPS } from './architecture.ts';
 import { createBooth, disposeCell, type BoothCell, type Target, type Collider } from './booths.ts';
 import { boothPose, type Booth, type Product, type Quality } from '../domain/model.ts';
 import { loadGLB, disposeImported } from './importer.ts';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AuthoredAssets, batchPlacements } from './authored.ts';
 import { LIGHTING } from './asset-registry.ts';
-import { HALL, PHOTO_SHOTS, STATION_IDS, boothPoint, type PhotoShotId, type Point2, type StationId } from '../domain/hall.ts';
+import { HALL, PHOTO_SHOTS, STATION_IDS, boothPoint, type PhotoShotId, type Point2, type StationId, type Level, levelName } from '../domain/hall.ts';
 import { walkRoute } from '../domain/navigation.ts';
 export interface WorldCallbacks {
     select: (boothId: string, productId?: string) => void;
     station: (id: StationId) => void;
+    level: (level: Level) => void;
     hotspots: (spots: {id:StationId;x:number;y:number;visible:boolean}[]) => void;
     hover: (text: string, x: number, y: number) => void;
     pose: (x: number, z: number, yaw: number) => void;
@@ -61,11 +62,13 @@ export class BazaarWorld {
     private host: HTMLElement;
     private resizeObserver: ResizeObserver;
     private raycaster = new T.Raycaster();
+    private level:Level=0;
+    private stairTransit=false;
     private ground = new T.Plane(new T.Vector3(0,1,0),0);
     private marker = new T.Mesh(new T.RingGeometry(.26,.32,40),new T.MeshBasicMaterial({color:'#168071',transparent:true,opacity:.90}));
     private stationBounds = STATION_IDS.map(id => {
-        const {position:[x,z],size:[w,d]} = HALL.stations[id];
-        return {id, box:new T.Box3(new T.Vector3(x-w/2,.014,z-d/2),new T.Vector3(x+w/2,1.48,z+d/2))};
+        const {position:[x,z],size:[w,d],level}=HALL.stations[id], y=HALL.decks[level];
+        return {id,level:level as Level,box:new T.Box3(new T.Vector3(x-w/2,y+.014,z-d/2),new T.Vector3(x+w/2,y+1.60,z+d/2))};
     });
     private mouse = new T.Vector2();
     private keys = new Set<string>();
@@ -113,35 +116,45 @@ export class BazaarWorld {
         this.renderer.domElement.setAttribute('aria-label', 'بازار سه‌بعدی. روی کف بزنید تا حرکت کنید یا تصویر را برای تغییر نگاه بکشید.');
         this.renderer.domElement.tabIndex = 0;
         host.prepend(this.renderer.domElement);
-        this.scene.background = new T.Color('#d4e5eb');
-        this.scene.fog = new T.Fog('#c7dce0', 37, 89);
+        this.scene.background = new T.Color('#bcc8c2');
+        this.scene.fog = new T.Fog('#b2bdb1',39,90);
         const environmentScene = new RoomEnvironment(), pmrem = new T.PMREMGenerator(this.renderer);
         this.environment = pmrem.fromScene(environmentScene, .04);
         this.scene.environment = this.environment.texture;
         this.scene.environmentIntensity = .28;
         environmentScene.dispose(); pmrem.dispose();
         this.materials = new MaterialLibrary(() => this.invalidate());
-        this.sky = new T.HemisphereLight('#eff6fe', '#b0a28f', 1.84);
+        this.sky = new T.HemisphereLight('#eff3f3','#ac9880',1.27);
         this.scene.add(this.sky);
         this.shadow = new T.DirectionalLight('#fff0ce', 3.5);
-        this.shadow.position.set(-8.3, 15.4, 9.2);
-        this.shadow.target.position.set(.58, 0, -.65);
+        this.shadow.position.set(-3.9,7.12,13.69);
+        this.shadow.target.position.set(.21,.54,-6.51);
         this.shadow.castShadow = true;
         this.shadow.shadow.mapSize.set(2048, 2048);
-        Object.assign(this.shadow.shadow.camera, { left: -20, right: 20, top: 22, bottom: -22, near: .5, far: 56 });
+        Object.assign(this.shadow.shadow.camera, { left:-12,right:12,top:16,bottom:-19,near:.25,far:40 });
         this.shadow.shadow.bias = -.0002;
         this.shadow.shadow.normalBias = .025;
         this.scene.add(this.shadow, this.shadow.target);
         const fill = this.fill = new T.DirectionalLight('#c6dce8', .56);
         fill.position.set(6, 5, -18);
         this.scene.add(fill);
-        for (const {position:[x,z]} of Object.values(HALL.stations)) {
-            const light = new T.PointLight('#ffe6bb', 19, 10, 2);
-            light.position.set(x, 4.53, z+.23);
+        for(const [x,y,z] of [[-2.03,3.23,9.68],[2.29,3.14,1.94],[-2.23,6.93,7.51],[1.55,5.61,-10.03]]){
+            const light=new T.PointLight('#ffefcc',27,11.2,2);
+            light.position.set(x,y,z);
             this.scene.add(light);
             this.practicals.push(light);
         }
-        this.scene.add(createArchitecture(this.materials));
+        const building=createArchitecture(this.materials);
+        this.scene.add(building);
+        for(const prop of PASSAGE_PROPS)void this.assets.instance(prop.asset).then(asset=>{
+            if(this.abort.signal.aborted)return;
+            asset.position.set(prop.x,HALL.decks[prop.level]+.008,prop.z);
+            asset.scale.setScalar(prop.scale);
+            asset.rotation.y=prop.turn;
+            building.add(asset);
+            this.renderer.shadowMap.needsUpdate=true;
+            this.invalidate();
+        }).catch(()=>{});
         this.marker.rotation.x = -Math.PI/2;
         this.marker.visible = false;
         this.scene.add(this.marker);
@@ -172,7 +185,7 @@ export class BazaarWorld {
     private bindEvents() {
         const signal = this.abort.signal, canvas = this.renderer.domElement;
         canvas.addEventListener('pointerdown', e => {
-            if (this.mode !== 'walk')
+            if (this.mode !== 'walk' || this.stairTransit)
                 return;
             this.trip = undefined;
             canvas.focus({ preventScroll: true });
@@ -213,7 +226,7 @@ export class BazaarWorld {
             }
         }, { signal, passive: false });
         window.addEventListener('keydown', e => {
-            if ((e.target as HTMLElement).closest('input,textarea,select,dialog') || document.querySelector('dialog[open]'))
+            if (this.stairTransit || (e.target as HTMLElement).closest('input,textarea,select,dialog') || document.querySelector('dialog[open]'))
                 return;
             if (['KeyW', 'KeyS', 'KeyA', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft'].includes(e.code)) {
                 e.preventDefault();
@@ -258,22 +271,24 @@ export class BazaarWorld {
         this.mouse.set((x - rect.x) / rect.width * 2 - 1, -(y - rect.y) / rect.height * 2 + 1);
         this.raycaster.setFromCamera(this.mouse, this.camera);
         this.raycaster.far = select ? 22 : 16;
-        const hits = this.raycaster.intersectObjects(this.targets.filter(t => t.mesh.parent?.visible !== false).map(t => t.mesh), false);
+        const targets=this.targets.filter(t=>this.cells.some(c=>c.booth.id===t.boothId&&c.level===this.level));
+        const hits=this.raycaster.intersectObjects(targets.map(t=>t.mesh),false);
         const distanceTo = (p:T.Vector3) => p.distanceTo(this.camera.position);
         const opaqueHit = (point:T.Vector3) => {
             const distance = distanceTo(point);
             const direction = point.clone().sub(this.camera.position).normalize();
             const ray = new T.Ray(this.camera.position,direction);
             return this.colliders.some(c => {
-                if (!c.occludes) return false;
-                const box = new T.Box3(new T.Vector3(c.minX,.04,c.minZ),new T.Vector3(c.maxX,c.height,c.maxZ));
+                if(!c.occludes || c.level!==this.level)return false;
+                const y=HALL.decks[c.level];
+                const box=new T.Box3(new T.Vector3(c.minX,y+.04,c.minZ),new T.Vector3(c.maxX,y+c.height,c.maxZ));
                 const hit = ray.intersectBox(box,new T.Vector3());
                 return hit && distanceTo(hit) < distance - .12;
             });
         };
         const boothHit = hits.find(hit => !opaqueHit(hit.point));
-        const target = this.targets.find(t => t.mesh === boothHit?.object);
-        const station = this.stationBounds.map(({id,box}) => ({id, point:this.raycaster.ray.intersectBox(box,new T.Vector3())}))
+        const target=targets.find(t=>t.mesh===boothHit?.object);
+        const station=this.stationBounds.filter(s=>s.level===this.level).map(({id,box})=> ({id, point:this.raycaster.ray.intersectBox(box,new T.Vector3())}))
             .filter(entry => entry.point && distanceTo(entry.point) < this.raycaster.far && !opaqueHit(entry.point))
             .sort((one,other) => distanceTo(one.point!) - distanceTo(other.point!))[0];
         if (station && (!boothHit || distanceTo(station.point!) < boothHit.distance)) {
@@ -281,6 +296,18 @@ export class BazaarWorld {
             if (select) this.callback.station(station.id);
             else this.callback.hover(HALL.stations[station.id].label,x-rect.x,y-rect.y);
             return;
+        }
+        if(!target&&!this.stairTransit){
+            const stair=HALL.stairs,next=this.level===0?1:0;
+            const rail=new T.Box3(new T.Vector3(-stair.width*.5,0,stair.high),
+                new T.Vector3(stair.width*.5,HALL.decks[1]+.27,stair.low));
+            const hit=this.raycaster.ray.intersectBox(rail,new T.Vector3());
+            if(hit&&distanceTo(hit)<13.5&&!opaqueHit(hit)){
+                canvasCursor(this.renderer.domElement,'pointer');
+                if(select)this.changeLevel(next);
+                else this.callback.hover(`رفتن به ${levelName(next)}`,x-rect.x,y-rect.y);
+                return;
+            }
         }
         canvasCursor(this.renderer.domElement, target ? 'pointer' : this.drag ? 'grabbing' : 'grab');
         if (!target) {
@@ -303,13 +330,12 @@ export class BazaarWorld {
         this.cells.forEach(c => disposeCell(c));
         this.cells = [];
         this.targets = [];
-        this.colliders = this.stationBounds.map(({box}) => ({
-            minX:box.min.x,maxX:box.max.x,minZ:box.min.z,maxZ:box.max.z,height:1.08,occludes:false,
+        this.colliders=this.stationBounds.map(({box,level})=>({
+            minX:box.min.x,maxX:box.max.x,minZ:box.min.z,maxZ:box.max.z,height:1.08,occludes:false,level,
         }));
-        for (const x of [-6.14,6.14]) for (const z of [8.87,-6.22])
-            this.colliders.push({minX:x-.95,maxX:x+.95,minZ:z-.26,maxZ:z+.26,height:.5,occludes:false});
-        for (const [x,z] of [[-6.62,8.36],[6.65,8.36],[-5.78,-5.62],[5.82,-5.62]])
-            this.colliders.push({minX:x-.43,maxX:x+.43,minZ:z-.35,maxZ:z+.35,height:2.28,occludes:false});
+        for(const {x,z,width,depth,level} of PASSAGE_PROPS)this.colliders.push({
+            minX:x-width/2,maxX:x+width/2,minZ:z-depth/2,maxZ:z+depth/2,height:1.1,occludes:false,level,
+        });
         for (const root of this.vacancies) {
             root.traverse(o => { if (o instanceof T.InstancedMesh)
                 o.dispose(); if (o instanceof T.Mesh && o.userData.vacancyOwned)
@@ -327,7 +353,7 @@ export class BazaarWorld {
         for (const slot of [8, 9])
             if (!booths.some(b => b.slot === slot)) {
                 const root = new T.Group(), pose = boothPose(slot);
-                root.position.set(pose.x, 0, pose.z);
+                root.position.set(pose.x,HALL.decks[pose.level],pose.z);
                 root.rotation.y = pose.rotation;
                 const b = new Batch(root);
                 const m = this.materials.materials;
@@ -339,7 +365,7 @@ export class BazaarWorld {
                 sign.position.set(0,2.35,.012);
                 const lo=boothPoint(slot,-2.86,-.42),hi=boothPoint(slot,2.86,.11);
                 this.colliders.push({minX:Math.min(lo[0],hi[0]),maxX:Math.max(lo[0],hi[0]),
-                    minZ:Math.min(lo[1],hi[1]),maxZ:Math.max(lo[1],hi[1]),height:2.7,occludes:true});
+                    minZ:Math.min(lo[1],hi[1]),maxZ:Math.max(lo[1],hi[1]),height:2.7,occludes:true,level:pose.level});
                 sign.userData.vacancyOwned = true;
                 root.add(sign);
                 b.finish();
@@ -390,24 +416,34 @@ export class BazaarWorld {
         this.invalidate();
     }
     frameShot(id: PhotoShotId) {
-        const shot = PHOTO_SHOTS.find(view => view.id === id);
-        if (!shot) return;
-        this.setMode('walk');
-        this.camera.fov = shot.fov;
-        this.camera.updateProjectionMatrix();
-        this.walkTo([shot.camera[0],shot.camera[2]],new T.Vector3().fromArray(shot.target),false,shot.camera[1]);
+        const shot=PHOTO_SHOTS.find(view=>view.id===id);
+        if(!shot||this.stairTransit)return;
+        this.changeLevel(shot.level,()=>{
+            this.setMode('walk');
+            this.camera.fov=shot.fov;
+            this.camera.updateProjectionMatrix();
+            this.walkTo([shot.camera[0],shot.camera[2]],new T.Vector3().fromArray(shot.target),false,shot.camera[1]-HALL.decks[shot.level]);
+        });
     }
-    focusStation(id: StationId) {
-        const [x,z]=HALL.stations[id].position, distance=HALL.stations[id].size[1]/2;
-        this.walkTo([x,z+distance+1.63],new T.Vector3(x,1.04,z));
+    focusStation(id:StationId) {
+        const {position:[x,z],level}=HALL.stations[id];
+        const innerX=Math.sign(x)*(level===0?1.07:2.04);
+        this.changeLevel(level as Level,()=>this.walkTo([innerX,z+.18],new T.Vector3(x,HALL.decks[level]+1.21,z)));
     }
     private positionHotspots() {
         this.camera.updateMatrixWorld();
-        this.callback.hotspots(STATION_IDS.map(id=>{
-            const [x,z]=HALL.stations[id].position;
-            const point=new T.Vector3(x,id==='proof'?1.96:1.62,z+.22).project(this.camera);
-            return {id,x:(point.x+1)*50,y:(1-point.y)*50,visible:point.z>0&&point.z<1&&Math.abs(point.x)<.86&&Math.abs(point.y)<.78};
-        }));
+        const projected=STATION_IDS.map(id=>{
+            const {position:[x,z],level}=HALL.stations[id],anchor=new T.Vector3(x-Math.sign(x)*.18,HALL.decks[level]+1.56,z);
+            const distance=anchor.distanceTo(this.camera.position),p=anchor.project(this.camera);
+            const visible=!this.stairTransit&&level===this.level&&distance<17.5&&p.z>0&&p.z<1&&Math.abs(p.x)<.86&&Math.abs(p.y)<.77;
+            return {id,x:(p.x+1)*50,y:(1-p.y)*50,visible,distance};
+        }).sort((a,b)=>a.distance-b.distance);
+        const shown:typeof projected=[];
+        for(const tag of projected) {
+            if(tag.visible && shown.some(item=>Math.abs(tag.x-item.x)<9.4&&Math.abs(tag.y-item.y)<6.7))tag.visible=false;
+            if(tag.visible)shown.push(tag);
+        }
+        this.callback.hotspots(projected);
     }
     private async loadCell(cell: BoothCell): Promise<void> {
         if (this.pendingAssets.has(cell) || this.readyAssets.has(cell) || this.failedAssets.has(cell)) return;
@@ -430,6 +466,7 @@ export class BazaarWorld {
         } finally { this.pendingAssets.delete(cell); }
     }
     setMode(mode: 'walk' | 'orbit') {
+        if(this.stairTransit)return;
         this.mode = mode;
         this.trip = undefined;
         this.keys.clear();
@@ -437,50 +474,76 @@ export class BazaarWorld {
         if (mode === 'orbit') {
             const dir = this.camera.getWorldDirection(new T.Vector3());
             this.controls.target.copy(this.camera.position).addScaledVector(dir, 6);
-            this.controls.target.y = 1.7;
+            this.controls.target.y=HALL.decks[this.level]+1.70;
             this.controls.update();
         }
         else {
-            this.camera.position.y = 1.68;
+            this.camera.position.y=HALL.decks[this.level]+1.71;
             this.syncAngles();
         }
         this.invalidate();
     }
-    setMotion(x: number, y: number) { this.trip = undefined; this.motion.set(x, y); this.invalidate(); }
-    focusBooth(id: string) {
-        const cell = this.cells.find(c => c.booth.id === id);
-        if (!cell) return;
-        const slot = cell.booth.slot;
-        const [x,z] = boothPoint(slot,.18,-1.44);
-        this.walkTo(boothPoint(slot,.0,2.71),new T.Vector3(x,1.57,z));
+    setMotion(x:number,y:number) {
+        if(this.stairTransit)return;
+        this.trip=undefined;
+        this.motion.set(x,y);
+        this.invalidate();
     }
-    enterBooth(id: string) {
-        const cell = this.cells.find(c => c.booth.id === id);
-        if (!cell) return;
-        const slot = cell.booth.slot;
-        const [x,z] = boothPoint(slot,-.43,-2.65);
-        this.walkTo(boothPoint(slot,2.27,-1.14),new T.Vector3(x,1.46,z));
+    focusBooth(id:string) {
+        const cell=this.cells.find(c=>c.booth.id===id);
+        if(!cell)return;
+        this.changeLevel(cell.level,()=>{
+            const slot=cell.booth.slot;
+            const [x,z]=boothPoint(slot,.15,-1.41);
+            const front=cell.level===0?1.73:.77;
+            this.walkTo(boothPoint(slot,2.16,front),new T.Vector3(x,HALL.decks[cell.level]+1.51,z));
+        });
+    }
+    enterBooth(id:string) {
+        const cell=this.cells.find(c=>c.booth.id===id);
+        if(!cell)return;
+        this.changeLevel(cell.level,()=>{
+            const slot=cell.booth.slot;
+            const [x,z]=boothPoint(slot,-.53,-2.66);
+            this.walkTo(boothPoint(slot,2.24,-1.23),new T.Vector3(x,HALL.decks[cell.level]+1.44,z));
+        });
     }
     reset() { this.frameShot('entry'); }
-    private walkTo(to:Point2,look?:T.Vector3,mark=false,eye=1.73) {
+    changeLevel(next:Level,then?:()=>void) {
+        if(this.stairTransit)return;
+        if(next===this.level){then?.();return;}
+        const fromY=HALL.decks[this.level], toY=HALL.decks[next],stairs=HALL.stairs;
+        const entryZ=next===1?stairs.landingLow:stairs.landingHigh;
+        const endZ=next===1?stairs.landingHigh:stairs.landingLow;
+        this.walkTo([0,entryZ],new T.Vector3(0,toY+1.66,endZ),false,1.71,()=>{
+            this.stairTransit=true;
+            const target=new T.Vector3(0,toY+1.71,endZ);
+            const look=new T.Vector3(-1.28,toY+1.74,endZ+(next===1?2.7:4.2));
+            this.travel(target,look,2290,()=>{
+                this.level=next;
+                this.stairTransit=false;
+                this.ground.constant=-toY;
+                this.callback.level(next);
+                then?.();
+            });
+        });
+    }
+    private walkTo(to:Point2,look?:T.Vector3,mark=false,eye=1.73,complete?:()=>void) {
         if (this.mode!=='walk') this.setMode('walk');
-        const pos=this.camera.position, path=walkRoute([pos.x,pos.z],to,(x,z)=>this.blocked(x,z));
-        if (!path.length) return;
+        const pos=this.camera.position,path=walkRoute([pos.x,pos.z],to,(x,z)=>this.blocked(x,z));
+        if(!path.length)return;
         const heading=this.camera.getWorldDirection(new T.Vector3());
         heading.y=0;
         heading.normalize();
-        if(mark) {
-            this.marker.position.set(to[0],.016,to[1]);
+        const base=HALL.decks[this.level];
+        if(mark){
+            this.marker.position.set(to[0],base+.016,to[1]);
             this.marker.visible=true;
         }
-        const advance = (i:number) => {
-            const [x,z]=path[i];
-            const target=new T.Vector3(x,eye,z);
-            const next=path[i+1];
-            const aim=next ? new T.Vector3(next[0],eye,next[1])
-                : look ?? target.clone().addScaledVector(heading,2);
-            this.travel(target,aim,T.MathUtils.clamp(pos.distanceTo(target)*272,310,2260),
-                next ? ()=>advance(i+1) : undefined);
+        const advance=(i:number)=>{
+            const [x,z]=path[i],target=new T.Vector3(x,base+eye,z),next=path[i+1];
+            const aim=next ? new T.Vector3(next[0],base+eye,next[1]) : look ?? target.clone().addScaledVector(heading,2);
+            this.travel(target,aim,T.MathUtils.clamp(pos.distanceTo(target)*272,285,2170),next?()=>advance(i+1):complete);
         };
         advance(0);
     }
@@ -496,9 +559,12 @@ export class BazaarWorld {
         this.trip = { from: this.camera.position.clone(), to, fromQ: this.camera.quaternion.clone(), toQ: dummy.quaternion.clone(), start: performance.now(), duration: this.reduced ? 1 : duration, complete };
         this.invalidate();
     }
-    private blocked(x: number, z: number): boolean {
-        if (Math.abs(x)>HALL.width/2-.62 || z>HALL.depth/2-.54 || z< -13.35) return true;
-        return this.colliders.some(c => x > c.minX - .23 && x < c.maxX + .23 && z > c.minZ - .23 && z < c.maxZ + .23);
+    private blocked(x:number,z:number):boolean {
+        const {width,depth,stairs,opening}=HALL;
+        if(Math.abs(x)>width/2-.55 || z>depth/2-.68 || z< -14.92)return true;
+        if(this.level===1 && Math.abs(x)<opening.halfWidth+.21 && z>opening.far-.20 && z<opening.near+.22)return true;
+        if(this.level===0 && Math.abs(x)<stairs.width/2+.15&&z<stairs.low+.20&&z>stairs.high-.22)return true;
+        return this.colliders.some(c=>c.level===this.level&&x>c.minX-.20&&x<c.maxX+.20&&z>c.minZ-.20&&z<c.maxZ+.20);
     }
     private resize() {
         this.width = Math.max(1, this.host.clientWidth);
@@ -556,7 +622,7 @@ export class BazaarWorld {
         for (const cell of this.cells) {
             const distance = cell.root.position.distanceTo(this.camera.position);
             cell.inventory.visible = distance < (this.effective === 'low' ? 19 : 36);
-            const close = distance < (this.effective === 'low' ? 9.2 : 14.7);
+            const close=distance<(this.effective==='low'?8.4:13.9);
             if (close) void this.loadCell(cell);
             const show = close && this.readyAssets.has(cell);
             if (cell.authored.visible !== show) this.renderer.shadowMap.needsUpdate = true;
@@ -591,7 +657,7 @@ export class BazaarWorld {
                 const a = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 a.href = url;
-                a.download = 'Kaghaz-Baharestan-v4.png';
+                a.download = 'Kaghaz-Passage-v5.png';
                 a.click();
                 setTimeout(() => URL.revokeObjectURL(url), 2000);
             } });

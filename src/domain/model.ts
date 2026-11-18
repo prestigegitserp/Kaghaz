@@ -41,7 +41,7 @@ export interface SavedState {
     customProducts: Product[];
     quality: Quality;
 }
-export const STORAGE_KEY = 'kaghaz.workspace.v4';
+export const STORAGE_KEY = 'kaghaz.workspace.v5';
 export const CATEGORIES: {
     id: Category;
     label: string;

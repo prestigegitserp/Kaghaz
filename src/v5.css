@@ -1,0 +1,87 @@
+:root {
+    color:#2b443a;
+    background:#ede8dc;
+    --line:#dcd3c1;
+    --paper:#fbf8ed;
+    --cream:#f0ebde;
+    --green:#386450;
+    --deep:#294b3f;
+    --muted:#6a7567;
+}
+body {background:radial-gradient(ellipse at 58% -19%,#faf7ed 0%,#eeeadd 61%,#e9e1d2 100%);}
+.app-header {background:#fbf8eef2;border-color:#ded5c1;color:#2f493e;}
+.brand-mark {background:#3d6b58;border-color:#577d67;}
+.brand-name small,.version-menu summary {color:#536b5c;}
+.inquiry-button {background:#3c6452;border-color:#405e50;}
+.inquiry-button:hover {background:#2d5142;}
+.hall-heading .breadcrumb {color:#536b5c;}
+.hall-heading h1 {color:#304d41;}
+.hall-heading-actions>button {background:#f8f3e7;border-color:#d4ccbb;color:#415b4c;}
+.hall-heading-actions>button:hover {background:#e9e8d9;}
+.scene-shell {border-color:#a1947c;background:#9d9481;height:clamp(470px,63dvh,735px);}
+.scene {background-position:50% 54%;background-color:#a09783;}
+.scene-shell::after {background:linear-gradient(0deg,#26292049,transparent 17%);}
+.scene-caption {background:#3d4c3cde;color:#f7efdc;}
+.floor-group {display:flex;align-items:center;gap:7px;pointer-events:auto;}
+.floor-picker {
+    display:flex;align-items:center;gap:3px;padding:3px;
+    border:1px solid #d9d3bf;background:#faf7e9ee;border-radius:6px;
+    box-shadow:0 3px 7px #26382d20;
+}
+.floor-picker button {
+    color:#445b4c;font-size:11px;min-height:28px;
+    padding:3px 10px;border-radius:4px;white-space:nowrap;
+}
+.floor-picker button[aria-pressed="true"] {background:#dddfd0;color:#304f42;font-weight:700;}
+.floor-picker button:hover {background:#e5e7db;color:#284435;}
+.scene-location,.scene-tools .icon-button,.experience-bar>button,.lighting-controls,
+.scene-bottomline .mode-switch,.scene-bottomline .map-toggle,.navigation-controls>.icon-button {
+    background:#faf7e9ee;color:#43584a;border-color:#dad4c2;
+}
+.experience-bar {top:65px;}
+.station-hotspots>button {
+    background:#fbf8ecf5;color:#304a3d;
+    box-shadow:0 5px 13px #252a1f77; border-right-color:var(--station);
+}
+.station-hotspots>button:hover {background:#fffcf1;}
+.map-stairs {display:flex;align-items:center;justify-content:center;gap:5px;margin:auto;padding:4px 8px 6px;}
+.station-section {margin-top:19px;scroll-margin-top:12px;}
+.station-heading {display:flex;align-items:center;}
+.station-heading h2 {font-size:18px;color:#375445;}
+.station-dock {grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px;}
+.station-card {background:#faf8ed;border-color:#ded5c1;}
+.station-card:hover {background:#f8f5e7;border-color:var(--station);}
+.station-icon {background:#ebe7d7;}
+.station-card small {color:#576b59;}
+.station-card .station-floor {color:#776d54;font-size:9px;}
+.catalog-mode .station-section {display:none;}
+.passage-stage {aspect-ratio:960/648;}
+.passage-stage canvas {height:100%;width:100%;touch-action:none;}
+.passage-stage.package-live canvas {display:block;width:100%;height:100%;}
+.press-inks {display:grid;grid-template-columns:repeat(4,1fr);gap:5px;direction:ltr;}
+.press-inks button {justify-content:center;min-width:0;padding:7px 2px;color:#626d60;background:#f3efe3;}
+.press-inks button.active[data-ink="C"] {color:#16404b;background:#b2dfe1;border-color:#70b7bf;}
+.press-inks button.active[data-ink="M"] {color:#593147;background:#e7bbd1;border-color:#d299b8;}
+.press-inks button.active[data-ink="Y"] {color:#574923;background:#e9d7a0;border-color:#d6bf76;}
+.press-inks button.active[data-ink="K"] {color:#f0eedf;background:#435046;border-color:#435046;}
+.press-inks button:not(.active){opacity:.68;}
+.lab-config h3 {line-height:1.61;}
+@media(max-width:1000px) {
+    .station-dock {grid-template-columns:repeat(3,minmax(0,1fr));}
+    .experience-bar {top:57px;}
+}
+@media(max-width:700px) {
+    .app-header>.main-nav {background:#fbf8ec;}
+    .scene-shell {height:min(58dvh,565px);min-height:383px;}
+    .scene {background-position:49% center;}
+    .floor-group {gap:3px;}
+    .floor-group .scene-location {display:none;}
+    .floor-picker {padding:2px;}
+    .floor-picker button {min-height:24px;padding:3px 6px;font-size:8px;}
+    .experience-bar {top:51px;}
+    .station-heading h2 {font-size:15px;}
+    .station-dock {grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+    .station-card {align-items:center;display:grid;grid-template-columns:auto 1fr;padding:7px;gap:6px;}
+    .station-card > span:nth-child(2) {max-width:100%;}
+    .station-card .station-floor {font-size:8px;}
+}

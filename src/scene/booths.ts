@@ -5,6 +5,7 @@ import { Batch, softContact } from './batch.ts';
 import { MaterialLibrary, seeded } from './materials.ts';
 import type { AssetId } from './asset-registry.ts';
 import { STOCK_COLORS } from './architecture.ts';
+import { HALL, type Level } from '../domain/hall.ts';
 export interface Collider {
     minX: number;
     maxX: number;
@@ -12,6 +13,7 @@ export interface Collider {
     maxZ: number;
     height: number;
     occludes: boolean;
+    level: Level;
 }
 export interface Target {
     mesh: T.Mesh;
@@ -22,6 +24,7 @@ export interface BoothCell {
     root: T.Group;
     inventory: T.Group;
     booth: Booth;
+    level: Level;
     targets: Target[];
     colliders: Collider[];
     authored: T.Group;
@@ -122,40 +125,49 @@ function swatch(b: Batch, m: MaterialLibrary, x: number, y: number, z: number, a
 export function createBooth(booth: Booth, products: Product[], library: MaterialLibrary): BoothCell {
     const root = new T.Group(), pose = boothPose(booth.slot), m = library.materials;
     const architecture = new T.Group(), inventory = new T.Group(), authored = new T.Group(), fallback = new T.Group();
-    const shade = library.color(booth.accent, .54), metal = library.color('#405559', .47);
+    const shade=library.color(booth.accent,.53),metal=library.color('#344742',.41),anodized=library.color('#979c8e',.36);
     const cream = library.color('#e9e6d8'), rng = seeded(booth.slot * 91 + 38);
     const isBoard = booth.category === 'board', isCreative = booth.category === 'creative';
     const isPack = booth.category === 'packaging', swatches = isBoard || isCreative;
     root.name = `booth:${booth.id}`;
-    root.position.set(pose.x, 0, pose.z);
+    root.position.set(pose.x, HALL.decks[pose.level], pose.z);
     root.rotation.y = pose.rotation;
     root.add(architecture, inventory);
     inventory.add(fallback, authored);
     authored.visible = false;
 
     const a = new Batch(architecture), b = new Batch(inventory), details = new Batch(fallback);
-    a.box(m.plaster, [0, 1.74, -3.96], [6.15, 3.48, .13], [], 1);
-    a.box(m.wood, [0,.021,-1.98], [6.14,.049,3.98], [], 1, false, false);
-    a.box(shade, [0,3.32,-.061], [6.14,.60,.36], [], 1, true);
-    a.box(cream, [0,3.65,-.064], [6.17,.074,.38], [], 1, true);
-    a.box(m.lamp, [0,3.012,.047], [5.65,.018,.035], [], 1, false, false);
-    const sign = new T.Mesh(new T.PlaneGeometry(4.45, .52), library.sign(booth.name, booth.subtitle, booth.accent));
-    sign.position.set(0, 3.32, .128);
+    a.box(m.plaster,[0,1.62,-3.96],[6.15,3.25,.13],[],.94);
+    a.box(m.floor,[0,.017,-1.97],[6.14,.046,3.95],[],.91,false,false);
+    a.box(shade,[0,2.996,-.055],[6.14,.50,.306],[],.97,true);
+    a.box(anodized,[0,3.277,-.032],[6.17,.076,.332],[],.94,true);
+    a.box(m.lamp,[0,2.742,.041],[5.68,.027,.038],[],.94,false,false);
+    const sign = new T.Mesh(new T.PlaneGeometry(4.49,.431),library.sign(booth.name,booth.subtitle,booth.accent));
+    sign.position.set(0,3.004,.118);
     sign.userData.ownedGeometry = true;
     architecture.add(sign);
     for (const x of [-3.01, 3.01]) {
-        a.box(metal, [x,1.51,-.055], [.103,3.04,.242], [], 1, true);
-        a.box(m.plaster, [x,1.64,-3.31], [.13,3.28,1.28], [], 1);
+        a.box(metal,[x,1.43,-.055],[.116,2.86,.238],[],1,true);
+        a.box(m.plaster,[x,1.55,-3.31],[.13,3.10,1.28],[],.93);
         a.box(shade, [x,.092,-1.005], [.041,.12,1.63], [], .78, false, false);
     }
-    a.box(metal,[0,3.26,-1.59],[5.84,.051,.059],[],1,false,false);
-    a.box(m.lamp,[0,3.226,-1.59],[5.62,.022,.042],[],1,false,false);
+    a.box(metal,[0,3.166,-1.59],[5.84,.052,.059],[],1,false,false);
+    a.box(m.lamp,[0,3.126,-1.59],[5.62,.022,.046],[],1,false,false);
+    // The right-hand opening remains walkable. Stock is visible through the shopfront on the left.
+    a.box(metal,[-.97,.235,.027],[3.81,.47,.081],[],.9,true);
+    a.add('plane',m['shop-glass'],[-.97,1.548,.054],[3.80,2.17,1],[0,0],1,false);
+    for(const x of [-2.88,-1.03,.933]){
+        a.box(anodized,[x,1.57,.065],[.033,2.194,.054],[],.9,true);
+        a.box(anodized,[x,1.13,.109],[.024,.292,.031],[],.91,false,false);
+    }
+    a.box(anodized,[-.97,1.978,.069],[3.78,.036,.041],[],.78,true);
+    a.box(shade,[2.125,2.477,.051],[.69,.242,.047],[],.93,true);
 
     for (const [bay,sx] of [-1.87,0,1.87].entries()) {
         b.box(shade,[sx,1.55,-3.709],[1.72,2.63,.042],[],.88 + bay*.047);
         for (const dx of [-.837,.837]) b.box(metal,[sx+dx,1.62,-3.46],[.043,2.95,.498],[],1);
-        for (let row=0;row<5;row++) {
-            const y = .33 + row*.529;
+        for (let row=0;row<6;row++) {
+            const y=.263+row*.451;
             b.box(m.wood,[sx,y,-3.441],[1.747,.044,.542],[],.94,false);
             b.box(cream,[sx,y+.015,-3.153],[1.70,.021,.026],[],.96,false,false);
             for (let column=0;column<4;column++) {
@@ -164,7 +176,8 @@ export function createBooth(booth: Booth, products: Product[], library: Material
                     const w = .31 + (column%2)*.024, dy = .38;
                     b.box(m.kraft,[x,y+.15,-3.43],[w,.248,dy],[0,(rng()-.5)*.075,0],.9+.15*rng(),true);
                     b.box(m.tape,[x,y+.278,-3.43],[.037,.008,.399],[],1,false,false);
-                    b.box(cream,[x+.005,y+.165,-3.229],[.116,.047,.003],[],.95,false,false);
+                    b.add('plane',m[`stock-${(booth.slot+row+column)%6}`],[x,y+.153,-3.226],
+                        [w*.83,.155,1],[0,0],.95,false);
                 } else if (swatches) {
                     const paper = library.color(STOCK_COLORS[(booth.slot+row+column) % STOCK_COLORS.length]);
                     for (let i=0;i<4+(column%2);i++) {
@@ -173,6 +186,11 @@ export function createBooth(booth: Booth, products: Product[], library: Material
                     if (row>=3 && bay===booth.slot%3) {
                         b.box(paper,[x,y+.225,-3.26],[.23,.28,.019],[-.16,0,.03],.93,true);
                     }
+                } else if(row===0||row===5||(bay===0 && column>1)){
+                    const mark=(row+column+booth.slot)%6;
+                    b.box(row===0?shade:cream,[x,y+.135,-3.431],[.341,.213,.387],[0,(rng()-.5)*.034,0],
+                        .89+.095*rng(),false);
+                    b.add('plane',m[`stock-${mark}`],[x,y+.135,-3.233],[.308,.183,1],[0,0],.98,false);
                 } else {
                     const paper = (row+column+bay)%3 === 0 ? m['warm-ream'] : m.ream;
                     for (let i=0;i<3+(row%2);i++) {
@@ -185,14 +203,14 @@ export function createBooth(booth: Booth, products: Product[], library: Material
         }
     }
     const px = -.71, pz = -1.065;
-    b.box(shade,[px,.478,pz],[2.95,.952,.86],[],1,true);
+    b.box(library.color('#354641',.62),[px,.478,pz],[2.95,.952,.86],[],1,true);
     b.box(m.wood,[px,.985,pz],[3.1,.087,.955],[],1,true);
     b.box(metal,[px,.092,pz+.425],[2.87,.135,.048],[],.85);
     for (let i=0;i<18;i++) b.box(shade,[px-1.34+i*.155,.51,pz+.437],[.083,.65,.015],[],.86+(i%3)*.058,false,false);
-    b.box(metal,[.46,1.047,-1.01],[.22,.031,.18],[],.93,true);
-    b.box(library.color('#234143'),[.46,1.132,-1.09],[.25,.163,.024],[.29,0,0],.99,true);
-    b.box(m.edge,[.05,1.041,-1.17],[.28,.026,.41],[0,.17,0],.99,true);
-    b.add('cylinder',m.brass,[.13,1.066,-.99],[.004,.19,.004],[0,0,Math.PI/2],.9,false);
+    details.box(metal,[.46,1.047,-1.01],[.22,.031,.18],[],.93,true);
+    details.box(library.color('#234143'),[.46,1.132,-1.09],[.25,.163,.024],[.29,0,0],.99,true);
+    details.box(m.edge,[.05,1.041,-1.17],[.28,.026,.41],[0,.17,0],.99,true);
+    details.add('cylinder',m.brass,[.13,1.066,-.99],[.004,.19,.004],[0,0,Math.PI/2],.9,false);
     softContact(inventory,px,pz,3.73,1.53,.23);
     softContact(inventory,0,-3.43,6.13,1.34,.19);
 
@@ -213,6 +231,7 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     const slots: BoothCell['slots'] = [];
     const add=(asset:AssetId, position:[number,number,number], rotation=0, scale=1) =>
         slots.push({asset,position,rotation,scale});
+    add('counter-accessories',[.13,1.031,-1.116],.12,.99);
     if (isPack) {
         carton(details,library,-1.54,1.028,-1.01,.44,.27,.43,true);
         carton(details,library,-.76,1.028,-1.04,.41,.26,.36,false);
@@ -241,8 +260,7 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     }
     if (isBoard || booth.category==='printing') {
         paperPallet(details,library,-2.1,-2.40,'#e4ded0',booth.slot);
-        add('wood-pallet',[-2.16,0,-2.35],.08,.79);
-        for (let i=0;i<3;i++) add('paper-bundle',[-2.16,.12+i*.149,-2.35],.082+i*.032,.8);
+        add('wrapped-stock-pallet',[-2.16,.008,-2.35],.13,.78);
     }
     a.finish(); b.finish(); details.finish();
 
@@ -254,7 +272,7 @@ export function createBooth(booth: Booth, products: Product[], library: Material
         root.add(box);
         targets.push({mesh:box,boothId:booth.id,productId});
     };
-    proxy([0,3.32,.13],[5.93,.61,.19]);
+    proxy([0,2.998,.137],[5.94,.49,.18]);
     const own = products.filter(p=>p.boothId===booth.id);
     own.slice(0,3).forEach((product,i)=>proxy([-1.53+i*.63,1.14,-1.01],[.56,.33,.57],product.id));
     if (own.length) proxy([standX,.56,standZ],[.65,1.12,.56],own[0].id);
@@ -264,9 +282,10 @@ export function createBooth(booth: Booth, products: Product[], library: Material
         const c=Math.cos(pose.rotation),s=Math.sin(pose.rotation);
         const xx=pose.x+x*c+z*s,zz=pose.z-x*s+z*c;
         const hx=(Math.abs(c)*w+Math.abs(s)*d)*.5,hz=(Math.abs(s)*w+Math.abs(c)*d)*.5;
-        colliders.push({minX:xx-hx,maxX:xx+hx,minZ:zz-hz,maxZ:zz+hz,height,occludes});
+        colliders.push({minX:xx-hx,maxX:xx+hx,minZ:zz-hz,maxZ:zz+hz,height,occludes,level:pose.level});
     }
-    collider(0,-3.96,6.15,.16,3.52);
+    collider(0,-3.96,6.15,.16,3.33);
+    collider(-.97,.035,3.81,.12,2.71,false);
     collider(0,-3.45,5.66,.61,2.98,false);
     for (const x of [-3.01,3.01]) {
         collider(x,-.055,.13,.26,3.09);
@@ -276,7 +295,7 @@ export function createBooth(booth: Booth, products: Product[], library: Material
     collider(standX,standZ,.65,.56,1.1,false);
     if (isPack) collider(2.13,-2.85,1.10,.93,1.12,false);
     if (isBoard||booth.category==='printing') collider(-2.16,-2.35,1.01,.82,.74,false);
-    return {root,inventory,booth,targets,colliders,authored,fallback,slots};
+    return {root,inventory,booth,level:pose.level,targets,colliders,authored,fallback,slots};
 }
 export function disposeCell(cell: BoothCell): void {
     cell.root.traverse(o => {

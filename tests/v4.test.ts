@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { cartonPanels, cartonSize, pileDimensions } from '../src/domain/carton.ts';
-import { HALL, boothPoint, STATION_IDS } from '../src/domain/hall.ts';
+import legacyHall from '../src/domain/hall-layout.json' with { type: 'json' };
 import { walkLineClear, walkRoute } from '../src/domain/navigation.ts';
 
 test('the dieline folds to the requested dimensions and keeps the base fixed', () => {
@@ -25,13 +25,9 @@ test('click-to-walk plans around furniture and refuses endpoints inside it', () 
     assert.deepEqual(walkRoute([-4,0],[0,0],blocked),[]);
     assert.deepEqual(walkRoute([1,3],[2,3],blocked),[[2,3]]);
 });
-test('hall layout exposes three stations and front-facing positions on multiple sides', () => {
-    assert.equal(HALL.booths.length,10);
-    assert.equal(STATION_IDS.length,3);
-    assert.ok(boothPoint(0,0,2)[0]<HALL.booths[0][0]);
-    assert.ok(boothPoint(1,0,2)[0]>HALL.booths[1][0]);
-    assert.ok(boothPoint(4,0,2)[1]>HALL.booths[4][1]);
-    for(const id of STATION_IDS)assert.ok(Math.max(...HALL.stations[id].position.map(Math.abs))<5);
+test('original v4 render specification retains its three stations',()=>{
+    assert.equal(legacyHall.booths.length,10);
+    assert.equal(Object.keys(legacyHall.stations).length,3);
 });
 test('the v4 photographed materials and Cycles images are available locally', () => {
     const root=new URL('../public/v4/',import.meta.url);
